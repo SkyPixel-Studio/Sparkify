@@ -663,7 +663,10 @@ private struct TemplateCardView: View {
     let onOpenDetail: () -> Void
 
     @State private var showCopiedHUD = false
+    @State private var isMarkdownPreview = false
     @FocusState private var focusedParam: ParamFocusTarget?
+    @State private var paramToReset: ParamKV?
+    @State private var showResetAllConfirmation = false
 
     private var renderResult: TemplateEngine.RenderResult {
         let values = Dictionary(uniqueKeysWithValues: prompt.params.map { ($0.key, $0.resolvedValue) })
@@ -674,6 +677,16 @@ private struct TemplateCardView: View {
 
     private func isParamMissing(_ param: ParamKV) -> Bool {
         param.isEffectivelyEmpty
+    }
+
+    private var cardMarkdownTheme: Theme {
+        Theme.gitHub
+            .text {
+                ForegroundColor(Color.appForeground)
+            }
+            .link {
+                ForegroundColor(Color.neonYellow)
+            }
     }
 
     var body: some View {
@@ -697,6 +710,36 @@ private struct TemplateCardView: View {
                     .padding(.top, -10)
                     .transition(.opacity.combined(with: .move(edge: .top)))
             }
+        }
+        .confirmationDialog(
+            "重置参数",
+            isPresented: Binding(
+                get: { paramToReset != nil },
+                set: { if !$0 { paramToReset = nil } }
+            ),
+            presenting: paramToReset
+        ) { param in
+            Button("重置为默认值", role: .destructive) {
+                resetParam(param)
+            }
+            Button("取消", role: .cancel) {
+                paramToReset = nil
+            }
+        } message: { param in
+            Text("确定要将 {\(param.key)} 重置为默认值吗？\n当前值：\(param.value.isEmpty ? "（空）" : param.value)\n默认值：\(param.defaultValue?.isEmpty == false ? param.defaultValue! : "（空）")")
+        }
+        .confirmationDialog(
+            "重置所有参数",
+            isPresented: $showResetAllConfirmation
+        ) {
+            Button("重置所有参数", role: .destructive) {
+                resetAllParams()
+            }
+            Button("取消", role: .cancel) {
+                showResetAllConfirmation = false
+            }
+        } message: {
+            Text("确定要将所有 \(prompt.params.count) 个参数重置为默认值吗？此操作将覆盖所有当前值。")
         }
     }
 
@@ -750,6 +793,37 @@ private struct TemplateCardView: View {
                     .font(.callout)
                     .foregroundStyle(.secondary)
             } else {
+                HStack(alignment: .center) {
+                    Text("参数")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    Button {
+                        showResetAllConfirmation = true
+                    } label: {
+                        HStack(spacing: 4) {
+                            Image(systemName: "arrow.counterclockwise.circle")
+                                .font(.system(size: 12, weight: .semibold))
+                            Text("重置所有")
+                                .font(.system(size: 12, weight: .semibold))
+                        }
+                        .foregroundStyle(Color.appForeground.opacity(0.7))
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 5)
+                        .background(
+                            Capsule()
+                                .fill(Color.cardSurface)
+                        )
+                        .overlay(
+                            Capsule()
+                                .stroke(Color.cardOutline.opacity(0.8), lineWidth: 1)
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    .help("将所有参数重置为默认值")
+                }
+                .padding(.bottom, 4)
+                
                 ForEach(prompt.params, id: \.persistentModelID) { paramModel in
                     let isMissing = isParamMissing(paramModel)
                     HStack(spacing: 10) {
@@ -781,6 +855,19 @@ private struct TemplateCardView: View {
                         .shadow(color: isMissing ? Color.neonYellow.opacity(0.22) : Color.black.opacity(0.04), radius: isMissing ? 6 : 1.2, y: isMissing ? 3 : 1                        )
                         .focused($focusedParam, equals: ParamFocusTarget(id: paramModel.persistentModelID))
                         .font(.system(size: 13, weight: .regular, design: .monospaced))
+
+                        Button {
+                            paramToReset = paramModel
+                        } label: {
+                            Image(systemName: "arrow.counterclockwise")
+                                .font(.system(size: 11, weight: .semibold))
+                                .foregroundStyle(Color.appForeground.opacity(0.6))
+                                .frame(width: 24, height: 24)
+                                .background(Circle().fill(Color.cardSurface))
+                                .overlay(Circle().stroke(Color.cardOutline.opacity(0.8), lineWidth: 1))
+                        }
+                        .buttonStyle(.plain)
+                        .help("重置为默认值")
                     }
                     .padding(.horizontal, 4)
                 }
@@ -790,22 +877,60 @@ private struct TemplateCardView: View {
 
     private var previewSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("预览")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+            HStack(alignment: .center, spacing: 10) {
+                Text("预览")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                
+                Button {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        isMarkdownPreview.toggle()
+                    }
+                } label: {
+                    Text("M")
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundStyle(isMarkdownPreview ? Color.black : Color.appForeground.opacity(0.6))
+                        .frame(width: 24, height: 24)
+                        .background(
+                            Circle()
+                                .fill(isMarkdownPreview ? Color.neonYellow : Color.cardSurface)
+                        )
+                        .overlay(
+                            Circle()
+                                .stroke(Color.cardOutline.opacity(isMarkdownPreview ? 0 : 0.8), lineWidth: 1)
+                        )
+                }
+                .buttonStyle(.plain)
+                .help(isMarkdownPreview ? "切换到纯文本预览" : "切换到 Markdown 预览")
+            }
 
             ScrollView {
-                Text(attributedPreviewText())
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(14)
-                    .background(RoundedRectangle(cornerRadius: 12).fill(Color.cardSurface))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 12)
-                            .stroke(Color.cardOutline.opacity(0.5), lineWidth: 1)
-                    )
-                    .textSelection(.enabled)
+                if isMarkdownPreview {
+                    if renderResult.rendered.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        Text("预览内容为空")
+                            .font(.callout)
+                            .foregroundStyle(.secondary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(14)
+                    } else {
+                        Markdown(renderResult.rendered)
+                            .markdownTheme(cardMarkdownTheme)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(14)
+                    }
+                } else {
+                    Text(attributedPreviewText())
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(14)
+                        .textSelection(.enabled)
+                }
             }
             .frame(minHeight: 120, maxHeight: 180)
+            .background(RoundedRectangle(cornerRadius: 12).fill(Color.cardSurface))
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(Color.cardOutline.opacity(0.5), lineWidth: 1)
+            )
 
             HStack(spacing: 10) {
                 Button {
@@ -879,6 +1004,24 @@ private struct TemplateCardView: View {
             prompt.pinned.toggle()
         }
         persistChange()
+    }
+
+    private func resetParam(_ param: ParamKV) {
+        withAnimation {
+            param.value = param.defaultValue ?? ""
+            persistChange()
+            paramToReset = nil
+        }
+    }
+
+    private func resetAllParams() {
+        withAnimation {
+            for param in prompt.params {
+                param.value = param.defaultValue ?? ""
+            }
+            persistChange()
+            showResetAllConfirmation = false
+        }
     }
 }
 
