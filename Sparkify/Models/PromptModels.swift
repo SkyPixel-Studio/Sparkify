@@ -5,13 +5,27 @@ import SwiftData
 final class ParamKV {
     var key: String
     var value: String
+    var defaultValue: String?
     @Relationship(inverse: \PromptItem.params)
     var owner: PromptItem?
 
-    init(key: String, value: String, owner: PromptItem? = nil) {
+    init(key: String, value: String, defaultValue: String? = nil, owner: PromptItem? = nil) {
         self.key = key
         self.value = value
+        self.defaultValue = defaultValue
         self.owner = owner
+    }
+
+    var resolvedValue: String {
+        let trimmedValue = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmedValue.isEmpty {
+            return defaultValue ?? ""
+        }
+        return value
+    }
+
+    var isEffectivelyEmpty: Bool {
+        resolvedValue.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 }
 

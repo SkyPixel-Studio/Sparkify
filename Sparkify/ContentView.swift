@@ -9,11 +9,12 @@ import SwiftUI
 import SwiftData
 import AppKit
 import UniformTypeIdentifiers
+import MarkdownUI
 
 private enum PromptListFilter: Equatable {
     case all
     case pinned
-    case tag(String)
+    case tag(String)    
 
     var analyticsName: String {
         switch self {
@@ -665,14 +666,14 @@ private struct TemplateCardView: View {
     @FocusState private var focusedParam: ParamFocusTarget?
 
     private var renderResult: TemplateEngine.RenderResult {
-        let values = Dictionary(uniqueKeysWithValues: prompt.params.map { ($0.key, $0.value) })
+        let values = Dictionary(uniqueKeysWithValues: prompt.params.map { ($0.key, $0.resolvedValue) })
         return TemplateEngine.render(template: prompt.body, values: values)
     }
 
     private var neonYellow: Color { Color.neonYellow }
 
-    private func isParamMissing(_ value: String) -> Bool {
-        value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    private func isParamMissing(_ param: ParamKV) -> Bool {
+        param.isEffectivelyEmpty
     }
 
     var body: some View {
@@ -749,17 +750,23 @@ private struct TemplateCardView: View {
                     .font(.callout)
                     .foregroundStyle(.secondary)
             } else {
-                ForEach($prompt.params, id: \.persistentModelID) { $param in
-                    let isMissing = isParamMissing(param.value)
+                ForEach(prompt.params, id: \.persistentModelID) { paramModel in
+                    let isMissing = isParamMissing(paramModel)
                     HStack(spacing: 10) {
-                        Text("\(param.key)=")
+                        Text("\(paramModel.key)=")
                             .font(.caption.weight(.semibold))
                             .padding(.horizontal, 8)
                             .padding(.vertical, 4)
                             .background(RoundedRectangle(cornerRadius: 8).fill(Color.neonYellow.opacity(0.4)))
                             .foregroundStyle(Color.black)
 
-                        TextField("{\(param.key)}", text: $param.value)
+                        TextField("{\(paramModel.key)}", text: Binding(
+                            get: { paramModel.value },
+                            set: { newValue in
+                                paramModel.value = newValue
+                                persistChange()
+                            }
+                        ), prompt: (paramModel.defaultValue ?? "").isEmpty ? nil : Text(paramModel.defaultValue ?? ""))
                         .textFieldStyle(.plain)
                         .padding(.vertical, 6)
                         .padding(.horizontal, 10)
@@ -771,12 +778,9 @@ private struct TemplateCardView: View {
                             RoundedRectangle(cornerRadius: 8)
                                 .stroke(isMissing ? Color.neonYellow : Color.cardOutline, lineWidth: isMissing ? 1.6 : 1)
                         )
-                        .shadow(color: isMissing ? Color.neonYellow.opacity(0.22) : Color.black.opacity(0.04), radius: isMissing ? 6 : 1.2, y: isMissing ? 3 : 1)
-                        .focused($focusedParam, equals: ParamFocusTarget(id: param.persistentModelID))
+                        .shadow(color: isMissing ? Color.neonYellow.opacity(0.22) : Color.black.opacity(0.04), radius: isMissing ? 6 : 1.2, y: isMissing ? 3 : 1                        )
+                        .focused($focusedParam, equals: ParamFocusTarget(id: paramModel.persistentModelID))
                         .font(.system(size: 13, weight: .regular, design: .monospaced))
-                        .onChange(of: param.value) { _ in
-                            persistChange()
-                        }
                     }
                     .padding(.horizontal, 4)
                 }
@@ -956,9 +960,22 @@ private struct PromptDetailView: View {
     @Environment(\.modelContext) private var modelContext
     @Bindable var prompt: PromptItem
     @FocusState private var focusedField: DetailField?
+    @State private var bodyViewMode: BodyViewMode = .edit
 
     private enum DetailField: Hashable {
         case title, body
+    }
+
+    private enum BodyViewMode: String, CaseIterable {
+        case edit
+        case preview
+
+        var label: String {
+            switch self {
+            case .edit: return "编辑"
+            case .preview: return "Markdown 预览"
+            }
+        }
     }
 
     private var neonYellow: Color { .neonYellow }
@@ -970,6 +987,8 @@ private struct PromptDetailView: View {
                     header
                     divider
                     bodyEditor
+                    divider
+                    parameterDefaultsEditor
                     divider
                     tagsEditor
                 }
@@ -1003,7 +1022,7 @@ private struct PromptDetailView: View {
             TextField("模板标题", text: $prompt.title, axis: .vertical)
                 .font(.system(size: 24, weight: .semibold, design: .rounded))
                 .focused($focusedField, equals: .title)
-                .onChange(of: prompt.title) { _ in persistChange() }
+                .onChange(of: prompt.title) { persistChange() }
 
             HStack(spacing: 16) {
                 Text(prompt.createdAt, style: .date)
@@ -1031,25 +1050,69 @@ private struct PromptDetailView: View {
 
     private var bodyEditor: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("正文模板")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            TextEditor(text: $prompt.body)
+            HStack(alignment: .center) {
+                Text("正文模板")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Spacer()
+                Picker("正文模式", selection: $bodyViewMode) {
+                    ForEach(BodyViewMode.allCases, id: \.self) { mode in
+                        Text(mode.label).tag(mode)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .frame(width: 220)
+            }
+
+            if bodyViewMode == .edit {
+                TextEditor(text: $prompt.body)
+                    .frame(minHeight: 240)
+                    .font(.system(size: 15, weight: .regular, design: .monospaced))
+                    .scrollContentBackground(.hidden)
+                    .padding(12)
+                    .background(RoundedRectangle(cornerRadius: 12).fill(Color.cardSurface))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12)
+                            .stroke(Color.cardOutline.opacity(0.5), lineWidth: 1)
+                    )
+                    .focused($focusedField, equals: .body)
+                    .onChange(of: prompt.body) { _ in
+                        syncParams()
+                        persistChange()
+                    }
+            } else {
+                ScrollView {
+                    if prompt.body.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        Text("正文为空，暂无 Markdown 预览")
+                            .font(.callout)
+                            .foregroundStyle(.secondary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(12)
+                    } else {
+                        Markdown(prompt.body)
+                            .markdownTheme(markdownPreviewTheme)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(12)
+                    }
+                }
                 .frame(minHeight: 240)
-                .font(.system(size: 15, weight: .regular, design: .monospaced))
-                .scrollContentBackground(.hidden)
-                .padding(12)
                 .background(RoundedRectangle(cornerRadius: 12).fill(Color.cardSurface))
                 .overlay(
                     RoundedRectangle(cornerRadius: 12)
                         .stroke(Color.cardOutline.opacity(0.5), lineWidth: 1)
                 )
-                .focused($focusedField, equals: .body)
-                .onChange(of: prompt.body) { _ in
-                    syncParams()
-                    persistChange()
-                }
+            }
         }
+    }
+
+    private var markdownPreviewTheme: Theme {
+        Theme.gitHub
+            .text {
+                ForegroundColor(Color.appForeground)
+            }
+            .link {
+                ForegroundColor(Color.neonYellow)
+            }
     }
 
     private var tagsEditor: some View {
@@ -1070,6 +1133,74 @@ private struct PromptDetailView: View {
         }
     }
 
+    private var parameterDefaultsEditor: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("参数默认值")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+            if prompt.params.isEmpty {
+                Text("正文中的 {placeholder} 会自动同步到这里，方便为每个参数配置默认值。")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            } else {
+                VStack(alignment: .leading, spacing: 12) {
+                    ForEach($prompt.params, id: \.persistentModelID) { $param in
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack(alignment: .center) {
+                                Text("{\(param.key)}")
+                                    .font(.system(size: 14, weight: .semibold, design: .monospaced))
+                                    .foregroundStyle(Color.appForeground)
+                                Spacer()
+                                Button {
+                                    param.value = param.defaultValue ?? ""
+                                    persistChange()
+                                } label: {
+                                    Label("同步到卡片", systemImage: "arrow.triangle.2.circlepath")
+                                        .font(.caption.weight(.semibold))
+                                }
+                                .buttonStyle(.plain)
+                                .foregroundStyle(Color.neonYellow)
+                                .disabled(shouldDisableApplyDefault(for: param))
+                                .opacity(shouldDisableApplyDefault(for: param) ? 0.35 : 1)
+                                .help("将默认值直接写入模板卡片的当前参数值")
+                            }
+
+                            TextField("默认值", text: Binding(
+                                get: { param.defaultValue ?? "" },
+                                set: { param.defaultValue = $0.isEmpty ? nil : $0 }
+                            ), prompt: Text("留空代表默认不填"))
+                                .textFieldStyle(.roundedBorder)
+                                .font(.system(size: 14, weight: .regular, design: .monospaced))
+                                .onChange(of: param.defaultValue) {
+                                    if trimmed(param.value).isEmpty {
+                                        param.value = param.defaultValue ?? ""
+                                    }
+                                    persistChange()
+                                }
+
+                            Text(parameterStatusText(for: param))
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                        .padding(.vertical, 10)
+                        .padding(.horizontal, 12)
+                        .background(
+                            RoundedRectangle(cornerRadius: 10)
+                                .fill(Color.cardSurface)
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 10)
+                                .stroke(Color.cardOutline.opacity(0.45), lineWidth: 1)
+                        )
+                    }
+                }
+            }
+        }
+    }
+
     private func persistChange() {
         prompt.updateTimestamp()
         do {
@@ -1084,6 +1215,30 @@ private struct PromptDetailView: View {
             prompt.pinned.toggle()
         }
         persistChange()
+    }
+
+    private func trimmed(_ value: String) -> String {
+        value.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private func shouldDisableApplyDefault(for param: ParamKV) -> Bool {
+        trimmed(param.defaultValue ?? "").isEmpty
+    }
+
+    private func parameterStatusText(for param: ParamKV) -> String {
+        let effectiveValue = trimmed(param.resolvedValue)
+        let currentValue = trimmed(param.value)
+        let defaultValue = trimmed(param.defaultValue ?? "")
+
+        if effectiveValue.isEmpty {
+            return "此参数默认保持为空，卡片视图会提示补全。"
+        }
+
+        if currentValue.isEmpty, defaultValue.isEmpty == false {
+            return "卡片默认填入：\(param.defaultValue ?? "")"
+        }
+
+        return "当前卡片值：\(param.value)"
     }
 
     private func syncParams() {

@@ -40,6 +40,7 @@ final class PromptTransferServiceTests: XCTestCase {
         XCTAssertEqual(fetched?.tags, ["welcome", "demo"])
         XCTAssertEqual(fetched?.params.first?.key, "name")
         XCTAssertEqual(fetched?.params.first?.value, "Leader")
+        XCTAssertEqual(fetched?.params.first?.defaultValue, "Leader")
         XCTAssertEqual(fetched?.createdAt, Date(timeIntervalSince1970: 1_000))
         XCTAssertEqual(fetched?.updatedAt, Date(timeIntervalSince1970: 2_000))
     }
@@ -87,6 +88,9 @@ final class PromptTransferServiceTests: XCTestCase {
         XCTAssertEqual(fetched?.pinned, true)
         XCTAssertEqual(fetched?.tags, ["modern", "eng"])
         XCTAssertEqual(fetched?.params.count, 2)
+        let params = fetched?.params ?? []
+        XCTAssertEqual(params.first(where: { $0.key == "name" })?.defaultValue, "Leader")
+        XCTAssertEqual(params.first(where: { $0.key == "company" })?.defaultValue, "Apple Pie Logistics")
     }
 
     func testImportRejectsUnsupportedVersion() throws {

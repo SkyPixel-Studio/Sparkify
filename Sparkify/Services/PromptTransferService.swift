@@ -70,7 +70,12 @@ struct PromptTransferService {
         prompt.createdAt = payload.createdAt
         prompt.updatedAt = payload.updatedAt
         prompt.params = payload.params.map { param in
-            ParamKV(key: param.key, value: param.value, owner: prompt)
+            ParamKV(
+                key: param.key,
+                value: param.value,
+                defaultValue: param.defaultValue,
+                owner: prompt
+            )
         }
     }
 
@@ -83,7 +88,9 @@ struct PromptTransferService {
             tags: payload.tags,
             createdAt: payload.createdAt,
             updatedAt: payload.updatedAt,
-            params: payload.params.map { ParamKV(key: $0.key, value: $0.value) }
+            params: payload.params.map {
+                ParamKV(key: $0.key, value: $0.value, defaultValue: $0.defaultValue)
+            }
         )
     }
 
@@ -116,13 +123,30 @@ private struct PromptPayload: Codable {
         tags = prompt.tags
         createdAt = prompt.createdAt
         updatedAt = prompt.updatedAt
-        params = prompt.params.map { ParamPayload(key: $0.key, value: $0.value) }
+        params = prompt.params.map {
+            ParamPayload(
+                key: $0.key,
+                value: $0.value,
+                defaultValue: $0.defaultValue
+            )
+        }
     }
 }
 
 private struct ParamPayload: Codable {
     let key: String
     let value: String
+    let defaultValue: String?
+
+    init(key: String, value: String, defaultValue: String?) {
+        self.key = key
+        self.value = value
+        if let defaultValue, defaultValue.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false {
+            self.defaultValue = defaultValue
+        } else {
+            self.defaultValue = nil
+        }
+    }
 }
 
 enum PromptTransferError: LocalizedError {
