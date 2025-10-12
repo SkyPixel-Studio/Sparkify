@@ -33,6 +33,7 @@ struct TemplateCardView: View {
     @Bindable var prompt: PromptItem
 
     let onOpenDetail: () -> Void
+    let onCopy: () -> Void
 
     @State private var showCopiedHUD = false
     @State private var isMarkdownPreview = false
@@ -110,6 +111,16 @@ struct TemplateCardView: View {
 
     private var interactionAnimation: Animation {
         .spring(response: 0.2, dampingFraction: 0.82)
+    }
+
+    init(
+        prompt: PromptItem,
+        onCopy: @escaping () -> Void = {},
+        onOpenDetail: @escaping () -> Void
+    ) {
+        self._prompt = Bindable(prompt)
+        self.onCopy = onCopy
+        self.onOpenDetail = onOpenDetail
     }
 
     var body: some View {
@@ -596,6 +607,7 @@ struct TemplateCardView: View {
         withAnimation(.easeOut(duration: 0.2)) {
             showCopiedHUD = true
         }
+        onCopy()
         Task { @MainActor in
             try? await Task.sleep(nanoseconds: 1_200_000_000)
             withAnimation(.easeIn(duration: 0.25)) {

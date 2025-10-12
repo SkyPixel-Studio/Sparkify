@@ -5,6 +5,7 @@
 //  Created by Assistant on 2025/10/12.
 //
 
+import AppKit
 import SwiftUI
 import SwiftData
 
@@ -34,7 +35,9 @@ struct SettingsView: View {
     }
     
     var body: some View {
-        NavigationStack {
+        let orderedApps = orderedToolboxApps
+
+        return NavigationStack {
             Form {
                 // MARK: - User Preferences
                 Section {
@@ -60,6 +63,36 @@ struct SettingsView: View {
                     }
                 } header: {
                     Text("个人设置")
+                }
+
+                Section {
+                    ForEach(Array(orderedApps.enumerated()), id: \.element.id) { index, app in
+                        ToolboxSettingsRow(
+                            app: app,
+                            isEnabled: Binding(
+                                get: { preferences.isToolEnabled(app) },
+                                set: { preferences.setTool(app, enabled: $0) }
+                            ),
+                            canMoveUp: index > 0,
+                            canMoveDown: index < orderedApps.count - 1,
+                            onMoveUp: {
+                                withAnimation(.spring(response: 0.28, dampingFraction: 0.85)) {
+                                    preferences.moveToolboxAppUp(at: index)
+                                }
+                            },
+                            onMoveDown: {
+                                withAnimation(.spring(response: 0.28, dampingFraction: 0.85)) {
+                                    preferences.moveToolboxAppDown(at: index)
+                                }
+                            }
+                        )
+                    }
+                } header: {
+                    Text("Toolbox 快捷入口")
+                } footer: {
+                    Text("启用后，模板列表右下角会出现 toolbox 按钮，可快速打开所选的 AI 助手或网页。")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
                 
                 // MARK: - About Section
@@ -192,6 +225,138 @@ struct SettingsView: View {
     }
 }
 
+extension SettingsView {
+    private var orderedToolboxApps: [ToolboxApp] {
+        preferences.toolboxOrder.compactMap { ToolboxApp.app(withID: $0) }
+    }
+}
+
+private struct ToolboxSettingsRow: View {
+    let app: ToolboxApp
+    @Binding var isEnabled: Bool
+    let canMoveUp: Bool
+    let canMoveDown: Bool
+    let onMoveUp: () -> Void
+    let onMoveDown: () -> Void
+    @State private var icon: NSImage?
+
+    var body: some View {
+        HStack(spacing: 12) {
+            iconView
+                .frame(width: 32, height: 32)
+                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .stroke(Color.cardOutline.opacity(0.2), lineWidth: 1)
+                )
+
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 6) {
+                    Text(app.displayName)
+                        .font(.system(size: 14, weight: .semibold))
+                    toolboxBadge
+                }
+                Text(app.summary)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer()
+
+            moveControls
+                .padding(.trailing, 2)
+
+            Toggle(isOn: $isEnabled) {
+                EmptyView()
+            }
+            .toggleStyle(.switch)
+            .labelsHidden()
+        }
+        .contentShape(Rectangle())
+        .task {
+            if icon == nil {
+                icon = await ToolboxLauncher.shared.icon(for: app, targetSize: CGSize(width: 32, height: 32))
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var iconView: some View {
+        if let icon {
+            Image(nsImage: icon)
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+        } else {
+            ZStack {
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .fill(Color.cardSurface)
+                Image(systemName: appFallbackSymbol)
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(Color.neonYellow)
+            }
+        }
+    }
+
+    private var appFallbackSymbol: String {
+        switch app.id {
+        case "chatgpt-app", "chatgpt-web":
+            return "bubble.left.and.bubble.right.fill"
+        case "claude-app", "claude-web":
+            return "sparkle"
+        case "gemini":
+            return "globe"
+        case "grok":
+            return "bolt"
+        default:
+            return "app.dashed"
+        }
+    }
+
+    private var toolboxBadge: some View {
+        Text(app.optionKind.badgeText)
+            .font(.system(size: 10, weight: .bold))
+            .textCase(.uppercase)
+            .padding(.horizontal, 6)
+            .padding(.vertical, 2)
+            .background(
+                Capsule()
+                    .fill(app.optionKind == .nativeApp ? Color.neonYellow.opacity(0.25) : Color.cardSurface)
+            )
+            .foregroundStyle(app.optionKind == .nativeApp ? Color.black : Color.secondary)
+    }
+
+    private var moveControls: some View {
+        VStack(spacing: 4) {
+            moveButton(
+                systemImage: "chevron.up",
+                action: onMoveUp,
+                disabled: canMoveUp == false
+            )
+            moveButton(
+                systemImage: "chevron.down",
+                action: onMoveDown,
+                disabled: canMoveDown == false
+            )
+        }
+    }
+
+    private func moveButton(systemImage: String, action: @escaping () -> Void, disabled: Bool) -> some View {
+        Button(action: action) {
+            Image(systemName: systemImage)
+                .font(.system(size: 10, weight: .bold))
+                .frame(width: 22, height: 22)
+                .foregroundStyle(disabled ? Color.secondary.opacity(0.45) : Color.appForeground.opacity(0.85))
+                .background(
+                    RoundedRectangle(cornerRadius: 6, style: .continuous)
+                        .fill(Color.cardSurface.opacity(disabled ? 0.35 : 0.85))
+                )
+        }
+        .buttonStyle(.plain)
+        .disabled(disabled)
+        .help(systemImage == "chevron.up" ? "上移" : "下移")
+    }
+}
+
 #Preview {
     let container: ModelContainer = {
         let schema = Schema([PromptItem.self, ParamKV.self])
@@ -204,4 +369,3 @@ struct SettingsView: View {
     return SettingsView()
         .modelContainer(container)
 }
-

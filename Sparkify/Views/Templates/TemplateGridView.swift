@@ -33,6 +33,9 @@ struct TemplateGridView: View {
     let onAddPrompt: () -> Void
     
     @State private var sortMode: PromptSortMode = .alphabetical
+    @State private var preferences = PreferencesService.shared
+    @State private var isToolboxExpanded = false
+    @State private var autoCollapseTask: Task<Void, Never>?
 
     private let columns: [GridItem] = [
         GridItem(.adaptive(minimum: 320, maximum: 420), spacing: 24, alignment: .top)
@@ -71,29 +74,30 @@ struct TemplateGridView: View {
         }
     }
 
-    var body: some View {
-        Group {
-            if prompts.isEmpty {
-                TemplateEmptyStateView(onImport: onImport)
-            } else {
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 24) {
-                        filterBar
+    private var enabledToolboxApps: [ToolboxApp] {
+        ToolboxApp.all.filter { preferences.enabledToolboxAppIDs.contains($0.id) }
+    }
 
-                        LazyVGrid(columns: columns, spacing: 24) {
-                            ForEach(arrangedPrompts) { prompt in
-                                TemplateCardView(prompt: prompt) {
-                                    onOpenDetail(prompt)
-                                }
-                            }
-                        }
-                    }
-                    .padding(.horizontal, 24)
-                    .padding(.top, 24)
-                    .padding(.bottom, 32)
-                }
-                .scrollContentBackground(.hidden)
-                .background(Color.appBackground)
+    private var shouldShowToolbox: Bool {
+        enabledToolboxApps.isEmpty == false
+    }
+
+    private let toolboxAutoCollapseDelay: UInt64 = 3_000_000_000
+
+    var body: some View {
+        ZStack(alignment: .bottomTrailing) {
+            contentView
+
+            if shouldShowToolbox {
+                ToolboxButtonView(
+                    apps: enabledToolboxApps,
+                    isExpanded: isToolboxExpanded,
+                    onToggle: toggleToolboxExpansion,
+                    onLaunch: openToolboxApp
+                )
+                .padding(.trailing, 28)
+                .padding(.bottom, 36)
+                .transition(.opacity.combined(with: .move(edge: .trailing)))
             }
         }
         .background(Color.appBackground)
@@ -114,6 +118,10 @@ struct TemplateGridView: View {
                 .keyboardShortcut("n", modifiers: .command)
             }
         }
+        .onDisappear {
+            autoCollapseTask?.cancel()
+            autoCollapseTask = nil
+        }
     }
 
     private var filterBar: some View {
@@ -133,6 +141,74 @@ struct TemplateGridView: View {
                 onSelectFilter: onSelectFilter
             )
             .opacity(availableTags.isEmpty ? 0.45 : 1)
+        }
+    }
+
+    @ViewBuilder
+    private var contentView: some View {
+        if prompts.isEmpty {
+            TemplateEmptyStateView(onImport: onImport)
+        } else {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 24) {
+                    filterBar
+
+                    LazyVGrid(columns: columns, spacing: 24) {
+                        ForEach(arrangedPrompts) { prompt in
+                            TemplateCardView(
+                                prompt: prompt,
+                                onCopy: handleCopyAction,
+                                onOpenDetail: {
+                                    onOpenDetail(prompt)
+                                }
+                            )
+                        }
+                    }
+                }
+                .padding(.horizontal, 24)
+                .padding(.top, 24)
+                .padding(.bottom, 32)
+            }
+            .scrollContentBackground(.hidden)
+            .background(Color.appBackground)
+        }
+    }
+
+    private func handleCopyAction() {
+        guard shouldShowToolbox else { return }
+        withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) {
+            isToolboxExpanded = true
+        }
+        autoCollapseTask?.cancel()
+        autoCollapseTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: toolboxAutoCollapseDelay)
+            withAnimation(.easeInOut(duration: 0.3)) {
+                isToolboxExpanded = false
+            }
+        }
+    }
+
+    private func toggleToolboxExpansion() {
+        guard shouldShowToolbox else { return }
+        autoCollapseTask?.cancel()
+        withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) {
+            isToolboxExpanded.toggle()
+        }
+        if isToolboxExpanded == false {
+            autoCollapseTask = nil
+        }
+    }
+
+    private func openToolboxApp(_ app: ToolboxApp) {
+        autoCollapseTask?.cancel()
+        autoCollapseTask = nil
+        let opened = ToolboxLauncher.shared.open(app)
+        if opened {
+            withAnimation(.easeInOut(duration: 0.2)) {
+                isToolboxExpanded = false
+            }
+        } else {
+            print("⚠️ [Toolbox] Failed to open \(app.displayName)")
         }
     }
 }
