@@ -52,6 +52,13 @@ struct TemplateCardView: View {
     private func isParamMissing(_ param: ParamKV) -> Bool {
         param.isEffectivelyEmpty
     }
+    
+    /// 判断参数值是否应该使用多行输入框
+    /// 规则：超过60个字符或包含换行符
+    private func shouldUseMultilineInput(_ param: ParamKV) -> Bool {
+        let content = param.value.isEmpty ? (param.defaultValue ?? "") : param.value
+        return content.count > 30 || content.contains("\n")
+    }
 
     private var cardMarkdownTheme: Theme {
         Theme.gitHub
@@ -145,7 +152,7 @@ struct TemplateCardView: View {
                 paramToReset = nil
             }
         } message: { param in
-            Text("确定要将 {\(param.key)} 重置为默认值吗？\n当前值：\(param.value.isEmpty ? "（空）" : param.value)\n默认值：\(param.defaultValue?.isEmpty == false ? param.defaultValue! : "（空）")")
+            Text("确定要将参数 {\(param.key)} 重置为默认值吗？")
         }
         .confirmationDialog(
             "重置所有参数",
@@ -307,50 +314,120 @@ struct TemplateCardView: View {
 
                 ForEach(prompt.params, id: \.persistentModelID) { paramModel in
                     let isMissing = isParamMissing(paramModel)
-                    HStack(spacing: 10) {
-                        Text("\(paramModel.key)=")
-                            .font(.caption.weight(.semibold))
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 4)
-                            .background(RoundedRectangle(cornerRadius: 8).fill(Color.neonYellow.opacity(0.4)))
-                            .foregroundStyle(Color.black)
-
-                        TextField("{\(paramModel.key)}", text: Binding(
-                            get: { paramModel.value },
-                            set: { newValue in
-                                paramModel.value = newValue
-                                persistChange()
+                    let useMultiline = shouldUseMultilineInput(paramModel)
+                    
+                    if useMultiline {
+                        // 多行输入：垂直布局
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack(spacing: 10) {
+                                Text("\(paramModel.key)=")
+                                    .font(.caption.weight(.semibold))
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 4)
+                                    .background(RoundedRectangle(cornerRadius: 8).fill(Color.neonYellow.opacity(0.4)))
+                                    .foregroundStyle(Color.black)
+                                
+                                Text("多行输入")
+                                    .font(.system(size: 10, weight: .medium))
+                                    .foregroundStyle(Color.secondary)
+                                    .padding(.horizontal, 6)
+                                    .padding(.vertical, 3)
+                                    .background(
+                                        Capsule()
+                                            .fill(Color.cardSurface)
+                                    )
+                                    .overlay(
+                                        Capsule()
+                                            .stroke(Color.cardOutline.opacity(0.6), lineWidth: 0.8)
+                                    )
+                                
+                                Spacer()
+                                
+                                Button {
+                                    paramToReset = paramModel
+                                } label: {
+                                    Image(systemName: "arrow.counterclockwise")
+                                        .font(.system(size: 11, weight: .semibold))
+                                        .foregroundStyle(Color.appForeground.opacity(0.6))
+                                        .frame(width: 24, height: 24)
+                                        .background(Circle().fill(Color.cardSurface))
+                                        .overlay(Circle().stroke(Color.cardOutline.opacity(0.8), lineWidth: 1))
+                                }
+                                .buttonStyle(.plain)
+                                .help("重置为默认值")
                             }
-                        ), prompt: (paramModel.defaultValue ?? "").isEmpty ? nil : Text(paramModel.defaultValue ?? ""))
-                        .textFieldStyle(.plain)
-                        .padding(.vertical, 6)
-                        .padding(.horizontal, 10)
-                        .background(
-                            RoundedRectangle(cornerRadius: 8)
-                                .fill(Color.white)
-                        )
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 8)
-                                .stroke(isMissing ? Color.neonYellow : Color.cardOutline, lineWidth: isMissing ? 1.6 : 1)
-                        )
-                        .shadow(color: isMissing ? Color.neonYellow.opacity(0.22) : Color.black.opacity(0.04), radius: isMissing ? 6 : 1.2, y: isMissing ? 3 : 1)
-                        .focused($focusedParam, equals: ParamFocusTarget(id: paramModel.persistentModelID))
-                        .font(.system(size: 13, weight: .regular, design: .monospaced))
-
-                        Button {
-                            paramToReset = paramModel
-                        } label: {
-                            Image(systemName: "arrow.counterclockwise")
-                                .font(.system(size: 11, weight: .semibold))
-                                .foregroundStyle(Color.appForeground.opacity(0.6))
-                                .frame(width: 24, height: 24)
-                                .background(Circle().fill(Color.cardSurface))
-                                .overlay(Circle().stroke(Color.cardOutline.opacity(0.8), lineWidth: 1))
+                            
+                            TextEditor(text: Binding(
+                                get: { paramModel.value },
+                                set: { newValue in
+                                    paramModel.value = newValue
+                                    persistChange()
+                                }
+                            ))
+                            .font(.system(size: 13, weight: .regular, design: .monospaced))
+                            .foregroundStyle(Color.appForeground)
+                            .scrollContentBackground(.hidden)
+                            .frame(minHeight: 80, maxHeight: 140)
+                            .padding(10)
+                            .background(
+                                RoundedRectangle(cornerRadius: 8)
+                                    .fill(Color.white)
+                            )
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 8)
+                                    .stroke(isMissing ? Color.neonYellow : Color.cardOutline, lineWidth: isMissing ? 1.6 : 1)
+                            )
+                            .shadow(color: isMissing ? Color.neonYellow.opacity(0.22) : Color.black.opacity(0.04), radius: isMissing ? 6 : 1.2, y: isMissing ? 3 : 1)
+                            .focused($focusedParam, equals: ParamFocusTarget(id: paramModel.persistentModelID))
                         }
-                        .buttonStyle(.plain)
-                        .help("重置为默认值")
+                        .padding(.horizontal, 4)
+                    } else {
+                        // 单行输入：保持原来的横向布局
+                        HStack(spacing: 10) {
+                            Text("\(paramModel.key)=")
+                                .font(.caption.weight(.semibold))
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .background(RoundedRectangle(cornerRadius: 8).fill(Color.neonYellow.opacity(0.4)))
+                                .foregroundStyle(Color.black)
+
+                            TextField("{\(paramModel.key)}", text: Binding(
+                                get: { paramModel.value },
+                                set: { newValue in
+                                    paramModel.value = newValue
+                                    persistChange()
+                                }
+                            ), prompt: (paramModel.defaultValue ?? "").isEmpty ? nil : Text(paramModel.defaultValue ?? ""))
+                            .textFieldStyle(.plain)
+                            .padding(.vertical, 6)
+                            .padding(.horizontal, 10)
+                            .background(
+                                RoundedRectangle(cornerRadius: 8)
+                                    .fill(Color.white)
+                            )
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 8)
+                                    .stroke(isMissing ? Color.neonYellow : Color.cardOutline, lineWidth: isMissing ? 1.6 : 1)
+                            )
+                            .shadow(color: isMissing ? Color.neonYellow.opacity(0.22) : Color.black.opacity(0.04), radius: isMissing ? 6 : 1.2, y: isMissing ? 3 : 1)
+                            .focused($focusedParam, equals: ParamFocusTarget(id: paramModel.persistentModelID))
+                            .font(.system(size: 13, weight: .regular, design: .monospaced))
+
+                            Button {
+                                paramToReset = paramModel
+                            } label: {
+                                Image(systemName: "arrow.counterclockwise")
+                                    .font(.system(size: 11, weight: .semibold))
+                                    .foregroundStyle(Color.appForeground.opacity(0.6))
+                                    .frame(width: 24, height: 24)
+                                    .background(Circle().fill(Color.cardSurface))
+                                    .overlay(Circle().stroke(Color.cardOutline.opacity(0.8), lineWidth: 1))
+                            }
+                            .buttonStyle(.plain)
+                            .help("重置为默认值")
+                        }
+                        .padding(.horizontal, 4)
                     }
-                    .padding(.horizontal, 4)
                 }
             }
         }
