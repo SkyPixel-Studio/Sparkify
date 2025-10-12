@@ -421,7 +421,7 @@ private struct DiffDetailView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 28) {
-            DiffSection(title: "标题", segments: diff.titleSegments)
+            DiffSection(title: "摘要", segments: diff.titleSegments)
             DiffSection(title: "正文", segments: diff.bodySegments)
             TagDiffSection(diff: diff.tagDiff)
             ParameterDiffSection(diffs: diff.parameterDiffs)

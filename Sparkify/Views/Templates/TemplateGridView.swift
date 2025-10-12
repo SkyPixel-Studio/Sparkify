@@ -7,6 +7,20 @@
 
 import SwiftUI
 
+enum PromptSortMode: String, CaseIterable {
+    case alphabetical = "摘要排序"
+    case timeCreated = "创建时间"
+    case timeUpdated = "更新时间"
+    
+    var iconName: String {
+        switch self {
+        case .alphabetical: return "textformat.abc"
+        case .timeCreated: return "clock"
+        case .timeUpdated: return "clock.arrow.circlepath"
+        }
+    }
+}
+
 struct TemplateGridView: View {
     let prompts: [PromptItem]
     let availableTags: [String]
@@ -17,6 +31,8 @@ struct TemplateGridView: View {
     let onExport: () -> Void
     @Binding var searchText: String
     let onAddPrompt: () -> Void
+    
+    @State private var sortMode: PromptSortMode = .alphabetical
 
     private let columns: [GridItem] = [
         GridItem(.adaptive(minimum: 320, maximum: 420), spacing: 24, alignment: .top)
@@ -24,10 +40,34 @@ struct TemplateGridView: View {
 
     private var arrangedPrompts: [PromptItem] {
         prompts.sorted { lhs, rhs in
-            if lhs.pinned == rhs.pinned {
+            // 1. 置顶优先
+            if lhs.pinned != rhs.pinned {
+                return lhs.pinned
+            }
+            
+            // 2. 根据排序模式排序
+            switch sortMode {
+            case .alphabetical:
+                // 按第一个 tag 分组（无 tag 的排在最后）
+                let lhsTag = lhs.tags.first ?? ""
+                let rhsTag = rhs.tags.first ?? ""
+                
+                if lhsTag != rhsTag {
+                    // 空 tag 排在最后
+                    if lhsTag.isEmpty { return false }
+                    if rhsTag.isEmpty { return true }
+                    return lhsTag.localizedCompare(rhsTag) == .orderedAscending
+                }
+                
+                // 同 tag 内按 title 的字典序排序
+                return lhs.title.localizedCompare(rhs.title) == .orderedAscending
+                
+            case .timeCreated:
+                return lhs.createdAt > rhs.createdAt
+                
+            case .timeUpdated:
                 return lhs.updatedAt > rhs.updatedAt
             }
-            return lhs.pinned && rhs.pinned == false
         }
     }
 
@@ -77,8 +117,16 @@ struct TemplateGridView: View {
     }
 
     private var filterBar: some View {
-        HStack {
+        HStack(spacing: 12) {
             Spacer()
+            
+            SortModeMenu(
+                currentMode: sortMode,
+                onSelectMode: { mode in
+                    sortMode = mode
+                }
+            )
+            
             TagFilterMenu(
                 availableTags: availableTags,
                 activeFilter: activeFilter,
@@ -163,6 +211,44 @@ private struct TagFilterMenu: View {
                 Image(systemName: "checkmark")
             }
         }
+    }
+}
+
+private struct SortModeMenu: View {
+    let currentMode: PromptSortMode
+    let onSelectMode: (PromptSortMode) -> Void
+    
+    var body: some View {
+        Menu {
+            ForEach(PromptSortMode.allCases, id: \.self) { mode in
+                Button {
+                    onSelectMode(mode)
+                } label: {
+                    Label {
+                        Text(mode.rawValue)
+                    } icon: {
+                        if mode == currentMode {
+                            Image(systemName: "checkmark")
+                        }
+                    }
+                }
+            }
+        } label: {
+            Label(currentMode.rawValue, systemImage: currentMode.iconName)
+                .font(.system(size: 13, weight: .semibold))
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+                .foregroundStyle(Color.appForeground.opacity(0.9))
+                .background(
+                    Capsule()
+                        .fill(Color.cardSurface)
+                )
+                .overlay(
+                    Capsule()
+                        .stroke(Color.cardOutline.opacity(0.8), lineWidth: 1)
+                )
+        }
+        .menuStyle(.borderlessButton)
     }
 }
 

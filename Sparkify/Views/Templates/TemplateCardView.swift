@@ -555,13 +555,19 @@ struct TemplateCardView: View {
         return attributed
     }
 
+    // 仅保存，不更新时间戳（用于参数值变化、置顶等 UI 状态变化）
     private func persistChange() {
-        prompt.updateTimestamp()
         do {
             try modelContext.save()
         } catch {
             print("保存模板失败: \(error)")
         }
+    }
+    
+    // 保存并更新时间戳（用于内容编辑：title, body, tags）
+    private func persistWithTimestampUpdate() {
+        prompt.updateTimestamp()
+        persistChange()
     }
 
     private func copyFilledPrompt() {

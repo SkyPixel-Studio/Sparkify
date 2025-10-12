@@ -101,10 +101,10 @@ struct PromptDetailView: View {
 
     private var header: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("模板标题")
+            Text("模板摘要")
                 .font(.caption)
                 .foregroundStyle(.secondary)
-            TextField("模板标题", text: $draft.title, axis: .vertical)
+            TextField("摘要", text: $draft.title, axis: .vertical)
                 .font(.system(size: 24, weight: .semibold, design: .rounded))
                 .focused($focusedField, equals: .title)
 
