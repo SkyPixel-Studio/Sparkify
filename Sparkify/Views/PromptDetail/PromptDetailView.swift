@@ -13,6 +13,7 @@ struct PromptDetailView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
     @Bindable var prompt: PromptItem
+    @Query(sort: \PromptItem.updatedAt, order: .reverse) private var allPrompts: [PromptItem]
     @FocusState private var focusedField: DetailField?
     @State private var bodyViewMode: BodyViewMode = .edit
     @State private var draft: PromptDraft = .empty
@@ -254,15 +255,48 @@ struct PromptDetailView: View {
             Text("标签（逗号分隔）")
                 .font(.caption)
                 .foregroundStyle(.secondary)
-            TextField("summary, outreach", text: Binding(
+            TextField("", text: Binding(
                 get: { draft.tags.joined(separator: ", ") },
                 set: { newValue in
                     draft.tags = newValue
                         .split(separator: ",")
                         .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+                        .filter { $0.isEmpty == false }
                 }
             ))
             .textFieldStyle(.roundedBorder)
+            
+            if recentTags.isEmpty == false {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("最近使用的标签")
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                    
+                    TagFlowLayout(spacing: 6) {
+                        ForEach(recentTags, id: \.self) { tag in
+                            Button {
+                                addTagIfNeeded(tag)
+                            } label: {
+                                Text(tag)
+                                    .font(.caption.weight(.medium))
+                                    .padding(.horizontal, 10)
+                                    .padding(.vertical, 5)
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 6)
+                                            .fill(draft.tags.contains(tag) ? Color.neonYellow : Color.cardSurface)
+                                    )
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 6)
+                                            .stroke(Color.cardOutline.opacity(0.4), lineWidth: 1)
+                                    )
+                                    .foregroundStyle(draft.tags.contains(tag) ? Color.black : Color.appForeground)
+                            }
+                            .buttonStyle(.plain)
+                            .disabled(draft.tags.contains(tag))
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -625,6 +659,44 @@ struct PromptDetailView: View {
             dismiss()
         } catch {
             print("删除模板失败: \(error)")
+        }
+    }
+    
+    private var recentTags: [String] {
+        var tagFrequency: [String: (count: Int, lastUsed: Date)] = [:]
+        
+        for promptItem in allPrompts {
+            for tag in promptItem.tags {
+                let trimmedTag = tag.trimmingCharacters(in: .whitespacesAndNewlines)
+                guard trimmedTag.isEmpty == false else { continue }
+                
+                if let existing = tagFrequency[trimmedTag] {
+                    tagFrequency[trimmedTag] = (
+                        count: existing.count + 1,
+                        lastUsed: max(existing.lastUsed, promptItem.updatedAt)
+                    )
+                } else {
+                    tagFrequency[trimmedTag] = (count: 1, lastUsed: promptItem.updatedAt)
+                }
+            }
+        }
+        
+        return tagFrequency
+            .sorted { lhs, rhs in
+                if lhs.value.lastUsed != rhs.value.lastUsed {
+                    return lhs.value.lastUsed > rhs.value.lastUsed
+                }
+                return lhs.value.count > rhs.value.count
+            }
+            .prefix(10)
+            .map(\.key)
+    }
+    
+    private func addTagIfNeeded(_ tag: String) {
+        let trimmedTag = tag.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmedTag.isEmpty == false, draft.tags.contains(trimmedTag) == false else { return }
+        withAnimation(.easeInOut(duration: 0.2)) {
+            draft.tags.append(trimmedTag)
         }
     }
 }
