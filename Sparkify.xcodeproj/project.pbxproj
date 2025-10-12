@@ -92,11 +92,12 @@
 				};
 			};
 			buildConfigurationList = 6E25D6BB2E9A9DF50002C8D2 /* Build configuration list for PBXProject "Sparkify" */;
-			developmentRegion = en;
+			developmentRegion = "zh-Hans";
 			hasScannedForEncodings = 0;
 			knownRegions = (
 				en,
 				Base,
+				"zh-Hans",
 			);
 			mainGroup = 6E25D6B72E9A9DF50002C8D2;
 			minimizedProjectReferenceProxies = 1;

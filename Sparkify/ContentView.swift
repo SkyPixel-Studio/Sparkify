@@ -74,7 +74,9 @@ struct ContentView: View {
                 deletePrompt: deletePrompts,
                 searchText: $searchText,
                 activeFilter: $activeFilter,
-                searchFieldFocus: $searchFieldFocused
+                searchFieldFocus: $searchFieldFocused,
+                onImport: { isImporting = true },
+                onExport: { prepareExport() }
             )
         } detail: {
             TemplateGridView(
@@ -323,6 +325,8 @@ private struct SidebarListView: View {
     @Binding var searchText: String
     @Binding var activeFilter: PromptListFilter
     let searchFieldFocus: FocusState<Bool>.Binding
+    let onImport: () -> Void
+    let onExport: () -> Void
 
     private var displayedPrompts: [PromptItem] {
         var items = prompts
@@ -427,6 +431,15 @@ private struct SidebarListView: View {
                 .keyboardShortcut("n", modifiers: .command)
             }
         }
+        .safeAreaInset(edge: .bottom) {
+            HStack(spacing: 12) {
+                SidebarActionButton(title: "导入", action: onImport)
+                SidebarActionButton(title: "导出", action: onExport)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .background(Color.appBackground.opacity(0.95))
+        }
     }
 }
 
@@ -453,50 +466,43 @@ private struct TemplateGridView: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            HStack(alignment: .center, spacing: 16) {
-                HStack(spacing: 12) {
-                    TemplateActionButton(
-                        title: "导入 JSON",
-                        systemImage: "square.and.arrow.down",
-                        action: onImport
-                    )
-                    TemplateActionButton(
-                        title: "导出 JSON",
-                        systemImage: "arrow.up.doc",
-                        action: onExport
-                    )
-                }
-                Spacer()
-                TagFilterMenu(
-                    availableTags: availableTags,
-                    activeFilter: activeFilter,
-                    onSelectFilter: onSelectFilter
-                )
-                .opacity(availableTags.isEmpty ? 0.45 : 1)
-            }
-            .padding(.top, 16)
-            .padding(.horizontal, 24)
-
+        Group {
             if prompts.isEmpty {
                 TemplateEmptyStateView(onImport: onImport)
             } else {
                 ScrollView {
-                    LazyVGrid(columns: columns, spacing: 24) {
-                        ForEach(arrangedPrompts) { prompt in
-                            TemplateCardView(prompt: prompt) {
-                                onOpenDetail(prompt)
+                    VStack(alignment: .leading, spacing: 24) {
+                        filterBar
+
+                        LazyVGrid(columns: columns, spacing: 24) {
+                            ForEach(arrangedPrompts) { prompt in
+                                TemplateCardView(prompt: prompt) {
+                                    onOpenDetail(prompt)
+                                }
                             }
                         }
                     }
                     .padding(.horizontal, 24)
-                    .padding(.vertical, 32)
+                    .padding(.top, 24)
+                    .padding(.bottom, 32)
                 }
                 .scrollContentBackground(.hidden)
                 .background(Color.appBackground)
             }
         }
         .background(Color.appBackground)
+    }
+
+    private var filterBar: some View {
+        HStack {
+            Spacer()
+            TagFilterMenu(
+                availableTags: availableTags,
+                activeFilter: activeFilter,
+                onSelectFilter: onSelectFilter
+            )
+            .opacity(availableTags.isEmpty ? 0.45 : 1)
+        }
     }
 }
 
@@ -539,7 +545,7 @@ private struct TagFilterMenu: View {
                         .frame(width: 26, height: 26)
                     Image(systemName: "tag.fill")
                         .font(.system(size: 12, weight: .bold))
-                        .foregroundStyle(Color.black)
+                        .foregroundStyle(iconStyle.foreground)
                 }
 
                 Text(selectedTagLabel)
@@ -548,18 +554,19 @@ private struct TagFilterMenu: View {
 
                 Image(systemName: "chevron.down")
                     .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(iconStyle.foreground.opacity(0.8))
+                    .foregroundStyle(Color.secondary.opacity(0.6))
             }
-            .padding(.vertical, 6)
-            .padding(.horizontal, 14)
+            .padding(.vertical, 8)
+            .padding(.horizontal, 16)
             .background(
                 Capsule()
-                    .fill(iconStyle.background.opacity(0.55))
+                    .fill(Color.white)
             )
             .overlay(
                 Capsule()
-                    .stroke(iconStyle.foreground.opacity(0.2), lineWidth: 1)
+                    .stroke(Color.black.opacity(0.06), lineWidth: 1)
             )
+            .contentShape(Capsule())
         }
         .menuStyle(.borderlessButton)
     }
@@ -611,6 +618,26 @@ private struct TemplateActionButton: View {
     }
 }
 
+private struct SidebarActionButton: View {
+    let title: String
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Text(title)
+                .font(.system(size: 13, weight: .semibold))
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 8)
+                .background(
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .fill(Color.black)
+                )
+                .foregroundStyle(Color.white)
+        }
+        .buttonStyle(.plain)
+    }
+}
+
 private struct FilterChip: View {
     let title: String
     let isActive: Bool
@@ -657,6 +684,20 @@ private struct FilterChip: View {
 }
 
 private struct TemplateCardView: View {
+    private enum CardContentMode: String, CaseIterable {
+        case template
+        case preview
+
+        var label: String {
+            switch self {
+            case .template:
+                return "模板"
+            case .preview:
+                return "预览"
+            }
+        }
+    }
+
     @Environment(\.modelContext) private var modelContext
     @Bindable var prompt: PromptItem
 
@@ -664,6 +705,7 @@ private struct TemplateCardView: View {
 
     @State private var showCopiedHUD = false
     @State private var isMarkdownPreview = false
+    @State private var contentMode: CardContentMode = .template
     @FocusState private var focusedParam: ParamFocusTarget?
     @State private var paramToReset: ParamKV?
     @State private var showResetAllConfirmation = false
@@ -696,7 +738,7 @@ private struct TemplateCardView: View {
                 Divider()
                     .overlay(Color.cardOutline.opacity(0.4))
                 parameterFields
-                previewSection
+                contentSection
             }
             .padding(20)
             .background(
@@ -745,44 +787,81 @@ private struct TemplateCardView: View {
 
     private var header: some View {
         VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .center) {
-                Text(prompt.title.isEmpty ? "未命名模板" : prompt.title)
-                    .font(.system(size: 20, weight: .semibold, design: .rounded))
-                    .foregroundStyle(Color.appForeground)
-                    .lineLimit(2)
-                    .multilineTextAlignment(.leading)
+            HStack(alignment: .top, spacing: 12) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("摘要")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(Color.secondary)
+                    Text(prompt.title.isEmpty ? "未命名摘要" : prompt.title)
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundStyle(Color.appForeground.opacity(0.8))
+                        .lineLimit(2)
+                        .multilineTextAlignment(.leading)
+                }
                 Spacer()
-                Button {
-                    togglePinned()
-                } label: {
-                    PinGlyph(isPinned: prompt.pinned, circleDiameter: 28)
+                HStack(spacing: 10) {
+                    Button {
+                        togglePinned()
+                    } label: {
+                        PinGlyph(isPinned: prompt.pinned, circleDiameter: 28)
+                    }
+                    .buttonStyle(.plain)
+                    .help(prompt.pinned ? "取消置顶" : "置顶")
+
+                    Button {
+                        onOpenDetail()
+                    } label: {
+                        Image(systemName: "rectangle.and.pencil.and.ellipsis")
+                            .imageScale(.medium)
+                            .padding(8)
+                            .background(Capsule().strokeBorder(Color.cardOutline.opacity(0.6), lineWidth: 1))
+                    }
+                    .buttonStyle(.plain)
+                    .help("查看更多设置")
                 }
-                .buttonStyle(.plain)
-                .help(prompt.pinned ? "取消置顶" : "置顶")
-                Button {
-                    onOpenDetail()
-                } label: {
-                    Image(systemName: "rectangle.and.pencil.and.ellipsis")
-                        .imageScale(.medium)
-                        .padding(8)
-                        .background(Capsule().strokeBorder(Color.cardOutline.opacity(0.6), lineWidth: 1))
-                }
-                .buttonStyle(.plain)
-                .help("查看更多设置")
             }
 
-            if !prompt.tags.isEmpty {
-                TagFlowLayout(spacing: 8) {
-                    ForEach(prompt.tags, id: \.self) { tag in
-                        TagBadge(tag: tag)
+            HStack(alignment: .top, spacing: 16) {
+                VStack(alignment: .leading, spacing: 6) {
+                    if !prompt.tags.isEmpty {
+                        TagFlowLayout(spacing: 8) {
+                            ForEach(prompt.tags, id: \.self) { tag in
+                                TagBadge(tag: tag)
+                            }
+                        }
+                    }
+                }
+                Spacer()
+
+                VStack(alignment: .center, spacing: 4) {
+                    Button {
+                        copyFilledPrompt()
+                    } label: {
+                        Label("复制", systemImage: "doc.on.doc")
+                            .font(.system(size: 14, weight: .semibold))
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 9)
+                            .background(Capsule().fill(Color.black))
+                            .foregroundStyle(Color.white)
+                    }
+                    .buttonStyle(.plain)
+                    .keyboardShortcut("d", modifiers: .command)
+
+                    Button("仅复制模板") {
+                        copyTemplateOnly()
+                    }
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(Color.appForeground.opacity(0.8))
+                    .buttonStyle(.plain)
+
+                    if !renderResult.missingKeys.isEmpty {
+                        Text("待填写：\(renderResult.missingKeys.joined(separator: ", "))")
+                            .font(.system(size: 11))
+                            .foregroundStyle(Color.secondary)
+                            .multilineTextAlignment(.center)
                     }
                 }
             }
-
-            Text(prompt.body)
-                .font(.footnote)
-                .foregroundStyle(Color.secondary.opacity(0.8))
-                .lineLimit(3)
         }
     }
 
@@ -875,84 +954,114 @@ private struct TemplateCardView: View {
         }
     }
 
-    private var previewSection: some View {
+    private var contentSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .center, spacing: 10) {
-                Text("预览")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                
-                Button {
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                        isMarkdownPreview.toggle()
+                Picker("", selection: $contentMode) {
+                    ForEach(CardContentMode.allCases, id: \.self) { mode in
+                        Text(mode.label).tag(mode)
                     }
-                } label: {
-                    Text("M")
-                        .font(.system(size: 13, weight: .bold))
-                        .foregroundStyle(isMarkdownPreview ? Color.black : Color.appForeground.opacity(0.6))
-                        .frame(width: 24, height: 24)
-                        .background(
-                            Circle()
-                                .fill(isMarkdownPreview ? Color.neonYellow : Color.cardSurface)
-                        )
-                        .overlay(
-                            Circle()
-                                .stroke(Color.cardOutline.opacity(isMarkdownPreview ? 0 : 0.8), lineWidth: 1)
-                        )
                 }
-                .buttonStyle(.plain)
-                .help(isMarkdownPreview ? "切换到纯文本预览" : "切换到 Markdown 预览")
+                .pickerStyle(.segmented)
+                .labelsHidden()
+
+                if contentMode == .preview {
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            isMarkdownPreview.toggle()
+                        }
+                    } label: {
+                        Text("M")
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundStyle(isMarkdownPreview ? Color.black : Color.appForeground.opacity(0.6))
+                            .frame(width: 24, height: 24)
+                            .background(
+                                Circle()
+                                    .fill(isMarkdownPreview ? Color.neonYellow : Color.cardSurface)
+                            )
+                            .overlay(
+                                Circle()
+                                    .stroke(Color.cardOutline.opacity(isMarkdownPreview ? 0 : 0.8), lineWidth: 1)
+                            )
+                    }
+                    .buttonStyle(.plain)
+                    .help(isMarkdownPreview ? "切换到纯文本预览" : "切换到 Markdown 预览")
+                }
+
+                Spacer()
             }
 
             ScrollView {
-                if isMarkdownPreview {
-                    if renderResult.rendered.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                        Text("预览内容为空")
+                switch contentMode {
+                case .template:
+                    let trimmed = prompt.body.trimmingCharacters(in: .whitespacesAndNewlines)
+                    if trimmed.isEmpty {
+                        Text("模板内容为空")
                             .font(.callout)
                             .foregroundStyle(.secondary)
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .padding(14)
                     } else {
-                        Markdown(renderResult.rendered)
-                            .markdownTheme(cardMarkdownTheme)
+                        Text(attributedTemplateText())
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .padding(14)
+                            .textSelection(.enabled)
                     }
-                } else {
-                    Text(attributedPreviewText())
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(14)
-                        .textSelection(.enabled)
+                case .preview:
+                    if isMarkdownPreview {
+                        if renderResult.rendered.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                            Text("预览内容为空")
+                                .font(.callout)
+                                .foregroundStyle(.secondary)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(14)
+                        } else {
+                            Markdown(renderResult.rendered)
+                                .markdownTheme(cardMarkdownTheme)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(14)
+                        }
+                    } else {
+                        Text(attributedPreviewText())
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(14)
+                            .textSelection(.enabled)
+                    }
                 }
             }
-            .frame(minHeight: 120, maxHeight: 180)
+            .frame(minHeight: 140, maxHeight: 220)
             .background(RoundedRectangle(cornerRadius: 12).fill(Color.cardSurface))
             .overlay(
                 RoundedRectangle(cornerRadius: 12)
                     .stroke(Color.cardOutline.opacity(0.5), lineWidth: 1)
             )
+        }
+    }
 
-            HStack(spacing: 10) {
-                Button {
-                    copyFilledPrompt()
-                } label: {
-                    Label("复制已填内容", systemImage: "doc.on.doc")
-                        .font(.system(size: 14, weight: .semibold))
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 9)
-                        .background(Capsule().fill(Color.black))
-                        .foregroundStyle(Color.white)
-                }
-                .buttonStyle(.plain)
-                .keyboardShortcut("d", modifiers: .command)
+    private func attributedTemplateText() -> AttributedString {
+        var attributed = AttributedString(prompt.body)
+        if attributed.characters.isEmpty {
+            return attributed
+        }
 
-                if !renderResult.missingKeys.isEmpty {
-                    Text("待填写：\(renderResult.missingKeys.joined(separator: ", "))")
-                        .font(.caption)
-                        .foregroundStyle(Color.secondary)
+        let raw = prompt.body
+        let keys = Set(TemplateEngine.placeholders(in: raw))
+        for key in keys {
+            let placeholder = "{\(key)}"
+            var searchStart = raw.startIndex
+
+            while searchStart < raw.endIndex,
+                let range = raw.range(of: placeholder, range: searchStart..<raw.endIndex) {
+                if let lower = AttributedString.Index(range.lowerBound, within: attributed),
+                   let upper = AttributedString.Index(range.upperBound, within: attributed) {
+                    let highlightRange = lower..<upper
+                    attributed[highlightRange].foregroundColor = Color.appForeground
+                    attributed[highlightRange].backgroundColor = Color.neonYellow.opacity(0.12)
                 }
+                searchStart = range.upperBound
             }
         }
+        return attributed
     }
 
     private func attributedPreviewText() -> AttributedString {
@@ -981,6 +1090,17 @@ private struct TemplateCardView: View {
         let pasteboard = NSPasteboard.general
         pasteboard.clearContents()
         if pasteboard.setString(rendered, forType: .string) {
+            showCopiedHUDFeedback()
+        } else {
+            print("复制失败：无法写入剪贴板")
+        }
+    }
+
+    private func copyTemplateOnly() {
+        let template = prompt.body
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        if pasteboard.setString(template, forType: .string) {
             showCopiedHUDFeedback()
         } else {
             print("复制失败：无法写入剪贴板")
