@@ -82,25 +82,15 @@ struct SidebarListView: View {
                         .padding(.vertical, 8)
                 } else {
                     ForEach(displayedPrompts) { prompt in
-                        Button {
-                            presentedPrompt = prompt
-                        } label: {
-                            VStack(alignment: .leading, spacing: 4) {
-                                HStack(spacing: 6) {
-                                    Text(prompt.title.isEmpty ? "未命名模板" : prompt.title)
-                                        .font(.headline)
-                                    if prompt.pinned {
-                                        PinGlyph(isPinned: true, circleDiameter: 18)
-                                    }
-                                }
-                                Text(formattedRelativeDate(for: prompt.updatedAt))
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
+                        SidebarPromptRow(
+                            prompt: prompt,
+                            isSelected: presentedPrompt?.uuid == prompt.uuid,
+                            action: {
+                                presentedPrompt = prompt
                             }
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(.vertical, 4)
-                        }
-                        .buttonStyle(.plain)
+                        )
+                        .listRowInsets(EdgeInsets(top: 2, leading: 12, bottom: 2, trailing: 12))
+                        .listRowBackground(Color.clear)
                     }
                     .onDelete { offsets in
                         let items = offsets.compactMap { index -> PromptItem? in
@@ -135,7 +125,7 @@ struct SidebarListView: View {
         }
     }
 
-    private func formattedRelativeDate(for date: Date) -> String {
+    fileprivate static func formattedRelativeDate(for date: Date) -> String {
         let now = Date()
         let delta = now.timeIntervalSince(date)
         if abs(delta) < 60 {
@@ -161,4 +151,64 @@ struct SidebarListView: View {
         formatter.allowedUnits = [.minute, .hour, .day, .weekOfMonth, .month, .year]
         return formatter
     }()
+}
+
+private struct SidebarPromptRow: View {
+    let prompt: PromptItem
+    let isSelected: Bool
+    let action: () -> Void
+
+    @State private var isHovered = false
+    @FocusState private var isFocused: Bool
+
+    private var interactionActive: Bool { isHovered || isFocused || isSelected }
+
+    var body: some View {
+        Button(action: action) {
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 6) {
+                    Text(prompt.title.isEmpty ? "未命名模板" : prompt.title)
+                        .font(.headline)
+                        .foregroundStyle(Color.appForeground.opacity(isSelected ? 0.9 : 0.8))
+                    if prompt.pinned {
+                        PinGlyph(isPinned: true, circleDiameter: 18)
+                    }
+                }
+                Text(SidebarListView.formattedRelativeDate(for: prompt.updatedAt))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.vertical, 6)
+            .padding(.horizontal, 10)
+            .background(backgroundShape)
+            .contentShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .focusable(true)
+        .focused($isFocused)
+        .onHover { hovering in
+            withAnimation(.spring(response: 0.2, dampingFraction: 0.82)) {
+                isHovered = hovering
+            }
+        }
+        .animation(.spring(response: 0.2, dampingFraction: 0.82), value: interactionActive)
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
+    }
+
+    private var backgroundShape: some View {
+        RoundedRectangle(cornerRadius: 12, style: .continuous)
+            .fill(backgroundColor)
+            .shadow(color: interactionActive ? Color.black.opacity(0.05) : Color.clear, radius: 5, x: 0, y: 1)
+    }
+
+    private var backgroundColor: Color {
+        if isSelected {
+            return Color.cardSurface.opacity(0.6)
+        }
+        if interactionActive {
+            return Color.cardSurface.opacity(0.45)
+        }
+        return Color.clear
+    }
 }

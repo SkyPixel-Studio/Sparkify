@@ -40,6 +40,9 @@ struct TemplateCardView: View {
     @FocusState private var focusedParam: ParamFocusTarget?
     @State private var paramToReset: ParamKV?
     @State private var showResetAllConfirmation = false
+    @State private var isHoveringCard = false
+    @State private var isPinHovered = false
+    @State private var isCopyHovered = false
 
     private var renderResult: TemplateEngine.RenderResult {
         let values = Dictionary(uniqueKeysWithValues: prompt.params.map { ($0.key, $0.resolvedValue) })
@@ -60,6 +63,48 @@ struct TemplateCardView: View {
             }
     }
 
+    private var cardChrome: some View {
+        RoundedRectangle(cornerRadius: 18, style: .continuous)
+            .fill(Color.cardBackground)
+            .overlay(
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .strokeBorder(cardBorderColor, lineWidth: 1)
+            )
+            .shadow(color: cardShadowColor, radius: cardShadowRadius, x: 0, y: cardShadowYOffset)
+    }
+
+    private var cardBorderColor: Color {
+        Color.cardOutline.opacity(isHoveringCard ? 0.7 : 0.45)
+    }
+
+    private var cardShadowColor: Color {
+        Color.black.opacity(isHoveringCard ? 0.18 : 0.08)
+    }
+
+    private var cardShadowRadius: CGFloat {
+        isHoveringCard ? 12 : 20
+    }
+
+    private var cardShadowYOffset: CGFloat {
+        isHoveringCard ? 6 : 12
+    }
+
+    private var copyButtonBackground: Color {
+        isCopyHovered ? Color.neonYellow : Color.black
+    }
+
+    private var copyButtonForeground: Color {
+        isCopyHovered ? Color.black : Color.white
+    }
+
+    private var copyButtonBorder: Color {
+        isCopyHovered ? Color.neonYellow.opacity(0.9) : Color.clear
+    }
+
+    private var interactionAnimation: Animation {
+        .spring(response: 0.2, dampingFraction: 0.82)
+    }
+
     var body: some View {
         ZStack(alignment: .top) {
             VStack(alignment: .leading, spacing: 16) {
@@ -70,11 +115,7 @@ struct TemplateCardView: View {
                 contentSection
             }
             .padding(20)
-            .background(
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .fill(Color.cardBackground)
-                    .shadow(color: Color.black.opacity(0.08), radius: 20, x: 0, y: 12)
-            )
+            .background(cardChrome)
 
             if showCopiedHUD {
                 CopiedHUDView()
@@ -82,6 +123,13 @@ struct TemplateCardView: View {
                     .transition(.opacity.combined(with: .move(edge: .top)))
             }
         }
+        .contentShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .onHover { hovering in
+            withAnimation(interactionAnimation) {
+                isHoveringCard = hovering
+            }
+        }
+        .animation(interactionAnimation, value: isHoveringCard)
         .confirmationDialog(
             "重置参数",
             isPresented: Binding(
@@ -132,9 +180,20 @@ struct TemplateCardView: View {
                     Button {
                         togglePinned()
                     } label: {
-                        PinGlyph(isPinned: prompt.pinned, circleDiameter: 28)
+                        PinGlyph(
+                            isPinned: prompt.pinned,
+                            circleDiameter: 28,
+                            isHighlighted: isPinHovered || (!prompt.pinned && isHoveringCard)
+                        )
                     }
                     .buttonStyle(.plain)
+                    .onHover { hovering in
+                        withAnimation(interactionAnimation) {
+                            isPinHovered = hovering
+                        }
+                    }
+                    .scaleEffect(isPinHovered ? 1.04 : 1.0)
+                    .animation(interactionAnimation, value: isPinHovered)
                     .help(prompt.pinned ? "取消置顶" : "置顶")
 
                     Button {
@@ -170,10 +229,24 @@ struct TemplateCardView: View {
                             .font(.system(size: 14, weight: .semibold))
                             .padding(.horizontal, 16)
                             .padding(.vertical, 9)
-                            .background(Capsule().fill(Color.black))
-                            .foregroundStyle(Color.white)
+                            .background(
+                                Capsule()
+                                    .fill(copyButtonBackground)
+                            )
+                            .foregroundStyle(copyButtonForeground)
+                            .overlay(
+                                Capsule()
+                                    .stroke(copyButtonBorder, lineWidth: 1)
+                            )
                     }
                     .buttonStyle(.plain)
+                    .onHover { hovering in
+                        withAnimation(interactionAnimation) {
+                            isCopyHovered = hovering
+                        }
+                    }
+                    .scaleEffect(isCopyHovered ? 1.04 : 1.0)
+                    .animation(interactionAnimation, value: isCopyHovered)
                     .keyboardShortcut("d", modifiers: .command)
 
                     Button("仅复制模板") {
