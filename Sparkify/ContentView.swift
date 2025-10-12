@@ -22,6 +22,7 @@ struct ContentView: View {
     @State private var isImporting: Bool = false
     @State private var alertItem: AlertItem?
     @State private var operationToast: OperationToast?
+    @State private var isShowingSettings: Bool = false
     @FocusState private var searchFieldFocused: Bool
 
     private var filteredPrompts: [PromptItem] {
@@ -57,7 +58,8 @@ struct ContentView: View {
                 deletePrompt: deletePrompts,
                 activeFilter: $activeFilter,
                 onImport: { isImporting = true },
-                onExport: { prepareExport() }
+                onExport: { prepareExport() },
+                onSettings: { isShowingSettings = true }
             )
         } detail: {
             TemplateGridView(
@@ -84,6 +86,9 @@ struct ContentView: View {
         }
         .sheet(item: $presentedPrompt) { prompt in
             PromptDetailView(prompt: prompt)
+        }
+        .sheet(isPresented: $isShowingSettings) {
+            SettingsView()
         }
         .fileExporter(
             isPresented: $isExporting,

@@ -15,6 +15,7 @@ struct SidebarListView: View {
     @Binding var activeFilter: PromptListFilter
     let onImport: () -> Void
     let onExport: () -> Void
+    let onSettings: () -> Void
 
     private var displayedPrompts: [PromptItem] {
         var items = prompts
@@ -87,11 +88,30 @@ struct SidebarListView: View {
         .background(Color.appBackground)
         .navigationTitle("Sparkify")
         .safeAreaInset(edge: .bottom) {
-            HStack(spacing: 12) {
-                SidebarActionButton(title: "导入", action: onImport)
-                SidebarActionButton(title: "导出", action: onExport)
+            VStack(spacing: 0) {
+                Divider()
+                    .padding(.bottom, 8)
+                
+                HStack(spacing: 12) {
+                    SidebarActionButton(title: "导入", action: onImport)
+                    SidebarActionButton(title: "导出", action: onExport)
+                }
+                .padding(.horizontal, 16)
+                
+                Button(action: onSettings) {
+                    HStack {
+                        Image(systemName: "gearshape")
+                        Text("设置")
+                    }
+                    .font(.system(size: 13))
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 6)
+                }
+                .buttonStyle(.plain)
+                .padding(.horizontal, 16)
+                .padding(.top, 4)
             }
-            .padding(.horizontal, 16)
             .padding(.vertical, 12)
             .background(Color.appBackground.opacity(0.95))
         }

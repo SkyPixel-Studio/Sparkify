@@ -19,39 +19,54 @@ struct SeedDataLoader {
     private static func defaultItems() -> [PromptItem] {
         [
             PromptItem(
-                title: "Cold Email Outreach",
-                body: "Hi {name}, I’m {sender} from {company}. I noticed {observation}. Would you be open to a quick {duration} call this week?",
-                tags: ["outreach", "sales"],
+                title: "一页纸 · 闪电总结（即插即用）",
+                body: """
+                请阅读以下原始材料，并以{tone}的语气输出一份**中文一页纸总结**。只按下列模板输出 Markdown，勿添加任何额外说明或前言。
+
+                # 标题（≤12字）
+                基于材料自动提炼主题与对象
+
+                ## TL;DR（≤60字）
+                一句话浓缩结论
+
+                ## 关键要点（最多5条，每条≤24字）
+                1. …
+                2. …
+                3. …
+                4. …
+                5. …
+
+                ## 数据与证据（最多3项）
+                - 名称：数值（时间/来源）
+                - 名称：数值（时间/来源）
+                - 名称：数值（时间/来源）
+
+                ## 结论与影响（≤2条）
+                - …
+                - …
+
+                ## 行动清单（≤3条｜格式：动作 — 负责人 — 截止日期 — 优先级）
+                - …
+                - …
+                - …
+
+                ## 未决 / 风险（≤2条）
+                - …
+
+                > 规则：
+                > - 先事实后判断；拒绝空话与堆砌。
+                > - 若材料不足，请在"未决 / 风险"首条提出 1 个最关键澄清问题。
+                > - 所有小节均以简明句呈现；无数据时写"未提及"。
+
+                —— 原始材料开始 ——
+                {content}
+                —— 原始材料结束 ——
+                """,
+                pinned: true,
+                tags: ["示例", "入门", "一页纸", "总结"],
                 params: [
-                    ParamKV(key: "name", value: ""),
-                    ParamKV(key: "sender", value: ""),
-                    ParamKV(key: "company", value: "Apple Pie Logistics"),
-                    ParamKV(key: "observation", value: "your recent product launch"),
-                    ParamKV(key: "duration", value: "15-minute")
-                ]
-            ),
-            PromptItem(
-                title: "Bug Report Template",
-                body: "Summary:\n- Issue: {issue}\n- Expected: {expected}\n- Actual: {actual}\n- Steps: {steps}\n\nLogs:\n{logs}",
-                tags: ["engineering", "qa"],
-                params: [
-                    ParamKV(key: "issue", value: ""),
-                    ParamKV(key: "expected", value: ""),
-                    ParamKV(key: "actual", value: ""),
-                    ParamKV(key: "steps", value: "1. ..."),
-                    ParamKV(key: "logs", value: "Attach console output here")
-                ]
-            ),
-            PromptItem(
-                title: "Summarize Meeting",
-                body: "Meeting with {partner} on {date}. Key topics: {topics}. Decisions: {decisions}. Next steps: {next_steps}.",
-                tags: ["summary"],
-                params: [
-                    ParamKV(key: "partner", value: ""),
-                    ParamKV(key: "date", value: ""),
-                    ParamKV(key: "topics", value: ""),
-                    ParamKV(key: "decisions", value: ""),
-                    ParamKV(key: "next_steps", value: "")
+                    ParamKV(key: "tone", value: "简洁专业"),
+                    ParamKV(key: "content", value: "（在此粘贴要总结的原始内容）")
                 ]
             )
         ]
