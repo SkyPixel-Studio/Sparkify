@@ -29,6 +29,17 @@ struct SidebarListView: View {
         }
         return sort(items)
     }
+    
+    private var sectionTitle: String {
+        switch activeFilter {
+        case .all:
+            return "模板"
+        case .pinned:
+            return "置顶的模板"
+        case let .tag(tagName):
+            return "标签「\(tagName)」的模板"
+        }
+    }
 
     private func sort(_ items: [PromptItem]) -> [PromptItem] {
         items.sorted { lhs, rhs in
@@ -56,7 +67,7 @@ struct SidebarListView: View {
             .listRowInsets(EdgeInsets(top: 8, leading: 12, bottom: 0, trailing: 12))
             .listRowBackground(Color.clear)
 
-            Section("模板") {
+            Section {
                 if displayedPrompts.isEmpty {
                     Text("还没有模板，先新建一个吧")
                         .foregroundStyle(.secondary)
@@ -81,6 +92,10 @@ struct SidebarListView: View {
                         deletePrompt(items)
                     }
                 }
+            } header: {
+                Text(sectionTitle)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
         }
         .listStyle(.sidebar)

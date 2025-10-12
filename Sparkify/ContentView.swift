@@ -139,9 +139,15 @@ struct ContentView: View {
 
     private func addPrompt() {
         withAnimation {
+            var initialTags: [String] = []
+            if case let .tag(tagName) = activeFilter {
+                initialTags = [tagName]
+            }
+            
             let newPrompt = PromptItem(
                 title: "新模板",
-                body: ""
+                body: "",
+                tags: initialTags
             )
             modelContext.insert(newPrompt)
             presentedPrompt = newPrompt
