@@ -13,6 +13,9 @@ struct SeedDataLoader {
         for item in seeds {
             context.insert(item)
         }
+        for item in seeds {
+            VersioningService.ensureBaselineRevision(for: item, in: context, author: "Seed")
+        }
         try context.save()
     }
 

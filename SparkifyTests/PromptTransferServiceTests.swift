@@ -114,7 +114,7 @@ final class PromptTransferServiceTests: XCTestCase {
     // MARK: - Helpers
 
     private func makeInMemoryContainer() throws -> ModelContainer {
-        let schema = Schema([PromptItem.self, ParamKV.self])
+        let schema = Schema([PromptItem.self, ParamKV.self, PromptRevision.self])
         let configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
         return try ModelContainer(for: schema, configurations: [configuration])
     }

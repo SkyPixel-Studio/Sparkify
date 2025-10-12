@@ -39,10 +39,17 @@ struct PromptTransferService {
         for payload in package.prompts {
             if let existing = try fetchPrompt(uuid: payload.uuid, in: context) {
                 apply(payload: payload, to: existing)
+                VersioningService.captureRevision(
+                    for: existing,
+                    in: context,
+                    author: "Import",
+                    isMilestone: true
+                )
                 updated += 1
             } else {
                 let created = makePrompt(from: payload)
                 context.insert(created)
+                VersioningService.ensureBaselineRevision(for: created, in: context, author: "Import")
                 inserted += 1
             }
         }
@@ -127,7 +134,7 @@ private struct PromptPayload: Codable {
             ParamPayload(
                 key: $0.key,
                 value: $0.value,
-                defaultValue: $0.defaultValue
+                defaultValue: $0.defaultValue ?? $0.value
             )
         }
     }

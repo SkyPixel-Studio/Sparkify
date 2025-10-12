@@ -1,6 +1,72 @@
 import Foundation
 import SwiftData
 
+struct RevisionParamSnapshot: Codable, Equatable {
+    let key: String
+    let value: String
+    let defaultValue: String?
+}
+
+@Model
+final class PromptRevision {
+    @Attribute(.unique) var uuid: String
+    var createdAt: Date
+    var author: String
+    var titleSnapshot: String
+    var bodySnapshot: String
+    var tagsSnapshot: [String]
+    private var paramsData: Data
+    var isMilestone: Bool
+    @Relationship(inverse: \PromptItem.revisions)
+    var prompt: PromptItem?
+
+    init(
+        uuid: String = UUID().uuidString,
+        createdAt: Date = Date(),
+        author: String = "Local",
+        titleSnapshot: String,
+        bodySnapshot: String,
+        tagsSnapshot: [String],
+        paramSnapshots: [RevisionParamSnapshot],
+        isMilestone: Bool = false,
+        prompt: PromptItem? = nil
+    ) {
+        self.uuid = uuid
+        self.createdAt = createdAt
+        self.author = author
+        self.titleSnapshot = titleSnapshot
+        self.bodySnapshot = bodySnapshot
+        self.tagsSnapshot = tagsSnapshot
+        self.paramsData = Self.encode(paramSnapshots)
+        self.isMilestone = isMilestone
+        self.prompt = prompt
+    }
+
+    var paramSnapshots: [RevisionParamSnapshot] {
+        get { Self.decode(paramsData) }
+        set { paramsData = Self.encode(newValue) }
+    }
+
+    private static func encode(_ snapshots: [RevisionParamSnapshot]) -> Data {
+        do {
+            return try JSONEncoder().encode(snapshots)
+        } catch {
+            assertionFailure("Failed to encode revision param snapshots: \(error)")
+            return Data()
+        }
+    }
+
+    private static func decode(_ data: Data) -> [RevisionParamSnapshot] {
+        guard data.isEmpty == false else { return [] }
+        do {
+            return try JSONDecoder().decode([RevisionParamSnapshot].self, from: data)
+        } catch {
+            assertionFailure("Failed to decode revision param snapshots: \(error)")
+            return []
+        }
+    }
+}
+
 @Model
 final class ParamKV {
     var key: String
@@ -40,6 +106,8 @@ final class PromptItem {
     var updatedAt: Date
     @Relationship(deleteRule: .cascade)
     var params: [ParamKV]
+    @Relationship(deleteRule: .cascade)
+    var revisions: [PromptRevision]
 
     init(
         uuid: String = UUID().uuidString,
@@ -49,7 +117,8 @@ final class PromptItem {
         tags: [String] = [],
         createdAt: Date = Date(),
         updatedAt: Date = Date(),
-        params: [ParamKV] = []
+        params: [ParamKV] = [],
+        revisions: [PromptRevision] = []
     ) {
         self.uuid = uuid
         self.title = title
@@ -59,7 +128,9 @@ final class PromptItem {
         self.createdAt = createdAt
         self.updatedAt = updatedAt
         self.params = params
+        self.revisions = revisions
         self.params.forEach { $0.owner = self }
+        self.revisions.forEach { $0.prompt = self }
     }
 
     func updateTimestamp() {

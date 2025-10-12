@@ -13,6 +13,7 @@ struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @Query private var prompts: [PromptItem]
     
+    @State private var preferences = PreferencesService.shared
     @State private var showResetConfirmation = false
     @State private var showResetSuccess = false
     
@@ -35,6 +36,32 @@ struct SettingsView: View {
     var body: some View {
         NavigationStack {
             Form {
+                // MARK: - User Preferences
+                Section {
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack {
+                            TextField("签名", text: $preferences.userSignature)
+                                .textFieldStyle(.plain)
+                            
+                            Button {
+                                preferences.resetSignatureToDefault()
+                            } label: {
+                                Image(systemName: "arrow.counterclockwise")
+                                    .foregroundStyle(.secondary)
+                            }
+                            .buttonStyle(.plain)
+                            .disabled(preferences.userSignature == NSUserName())
+                            .help("重置为系统用户名")
+                        }
+                        
+                        Text("签名将作为版本历史的作者名称。默认使用系统用户名。")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                } header: {
+                    Text("个人设置")
+                }
+                
                 // MARK: - About Section
                 Section("关于 Sparkify") {
                     HStack {

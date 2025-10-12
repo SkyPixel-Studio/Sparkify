@@ -18,6 +18,9 @@ struct PromptDetailView: View {
     @State private var draft: PromptDraft = .empty
     @State private var hasLoadedDraft = false
     @State private var pendingDialog: PendingDialog?
+    @State private var activePage: DetailPage = .editor
+    @State private var selectedBaselineRevisionID: String?
+    @State private var selectedComparisonRevisionID: String?
 
     private enum DetailField: Hashable {
         case title, body
@@ -37,29 +40,31 @@ struct PromptDetailView: View {
         }
     }
 
+    private enum DetailPage: String, CaseIterable {
+        case editor
+        case history
+
+        var label: String {
+            switch self {
+            case .editor:
+                return "编辑内容"
+            case .history:
+                return "版本历史"
+            }
+        }
+    }
+
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 24) {
-                        header
-                        divider
-                        bodyEditor
-                        divider
-                        parameterDefaultsEditor
-                        divider
-                        tagsEditor
-                    }
-                    .padding(24)
-                    .frame(maxWidth: 720, alignment: .leading)
-                }
-                .scrollContentBackground(.hidden)
-                .background(Color.appBackground.ignoresSafeArea())
-
+                pagePicker
                 Divider()
-                    .overlay(Color.cardOutline.opacity(0.2))
-
-                actionBar
+                    .overlay(Color.cardOutline.opacity(0.15))
+                if activePage == .editor {
+                    editorPage
+                } else {
+                    historyPage
+                }
             }
         }
         .onAppear {
@@ -67,6 +72,11 @@ struct PromptDetailView: View {
             draft = PromptDraft(from: prompt)
             hasLoadedDraft = true
             syncDraftParams()
+            VersioningService.ensureBaselineRevision(for: prompt, in: modelContext, author: "Local")
+            refreshRevisionSelections()
+        }
+        .onChange(of: prompt.revisions.count, initial: false) { _, _ in
+            refreshRevisionSelections()
         }
         .interactiveDismissDisabled(isDirty)
         .confirmationDialog(currentDialogTitle, isPresented: dialogPresentedBinding, titleVisibility: .visible) {
@@ -119,6 +129,58 @@ struct PromptDetailView: View {
     private var divider: some View {
         Divider()
             .overlay(Color.cardOutline.opacity(0.4))
+    }
+
+    private var pagePicker: some View {
+        HStack(alignment: .center, spacing: 0) {
+            Picker("内容视图", selection: $activePage) {
+                ForEach(DetailPage.allCases, id: \.self) { page in
+                    Text(page.label).tag(page)
+                }
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            Spacer()
+        }
+        .padding(.horizontal, 24)
+        .padding(.vertical, 12)
+        .background(Color.cardSurface.opacity(0.5))
+    }
+
+    private var editorPage: some View {
+        VStack(spacing: 0) {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 24) {
+                    header
+                    divider
+                    bodyEditor
+                    divider
+                    parameterDefaultsEditor
+                    divider
+                    tagsEditor
+                }
+                .padding(24)
+                .frame(maxWidth: 720, alignment: .leading)
+            }
+            .scrollContentBackground(.hidden)
+            .background(Color.appBackground.ignoresSafeArea())
+
+            Divider()
+                .overlay(Color.cardOutline.opacity(0.2))
+
+            actionBar
+        }
+    }
+
+    private var historyPage: some View {
+        VersionHistoryView(
+            prompt: prompt,
+            baselineRevisionID: $selectedBaselineRevisionID,
+            comparisonRevisionID: $selectedComparisonRevisionID,
+            onClose: {
+                dismiss()
+            }
+        )
     }
 
     private var bodyEditor: some View {
@@ -231,7 +293,7 @@ struct PromptDetailView: View {
                                         .font(.caption.weight(.semibold))
                                 }
                                 .buttonStyle(.plain)
-                                .foregroundStyle(Color.neonYellow)
+                                .foregroundStyle(.blue)
                                 .disabled(shouldDisableApplyDefault(for: draft.params[index]))
                                 .opacity(shouldDisableApplyDefault(for: draft.params[index]) ? 0.35 : 1)
                                 .help("将默认值直接写入模板卡片的当前参数值")
@@ -379,8 +441,12 @@ struct PromptDetailView: View {
 
         applyDraftToPrompt()
         prompt.updateTimestamp()
+        let capturedRevision = VersioningService.captureRevision(for: prompt, in: modelContext)
         do {
             try modelContext.save()
+            if capturedRevision != nil {
+                refreshRevisionSelections()
+            }
             pendingDialog = nil
             dismiss()
         } catch {
@@ -435,6 +501,21 @@ struct PromptDetailView: View {
     private var isDirty: Bool {
         guard hasLoadedDraft else { return false }
         return draft.differs(from: prompt)
+    }
+
+    private func refreshRevisionSelections() {
+        let availableIDs = Set(prompt.revisions.map(\.uuid))
+        if let baselineID = selectedBaselineRevisionID, availableIDs.contains(baselineID) == false {
+            selectedBaselineRevisionID = nil
+        }
+        if let comparisonID = selectedComparisonRevisionID,
+           comparisonID != VersionHistoryCurrentSelectionID,
+           availableIDs.contains(comparisonID) == false {
+            selectedComparisonRevisionID = nil
+        }
+        if selectedComparisonRevisionID == nil {
+            selectedComparisonRevisionID = VersionHistoryCurrentSelectionID
+        }
     }
 
     private var dialogPresentedBinding: Binding<Bool> {
