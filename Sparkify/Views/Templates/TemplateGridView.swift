@@ -15,6 +15,8 @@ struct TemplateGridView: View {
     let onOpenDetail: (PromptItem) -> Void
     let onImport: () -> Void
     let onExport: () -> Void
+    @Binding var searchText: String
+    let onAddPrompt: () -> Void
 
     private let columns: [GridItem] = [
         GridItem(.adaptive(minimum: 320, maximum: 420), spacing: 24, alignment: .top)
@@ -55,6 +57,23 @@ struct TemplateGridView: View {
             }
         }
         .background(Color.appBackground)
+        .searchable(text: $searchText, placement: .toolbar, prompt: "搜索模板")
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button(action: onAddPrompt) {
+                    Image(systemName: "plus")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(Color.black)
+                        .frame(width: 32, height: 32)
+                        .background(
+                            Circle()
+                                .fill(Color.white)
+                        )
+                }
+                .buttonStyle(.plain)
+                .keyboardShortcut("n", modifiers: .command)
+            }
+        }
     }
 
     private var filterBar: some View {

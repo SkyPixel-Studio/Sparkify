@@ -11,11 +11,8 @@ import SwiftUI
 struct SidebarListView: View {
     let prompts: [PromptItem]
     @Binding var presentedPrompt: PromptItem?
-    let addPrompt: () -> Void
     let deletePrompt: ([PromptItem]) -> Void
-    @Binding var searchText: String
     @Binding var activeFilter: PromptListFilter
-    let searchFieldFocus: FocusState<Bool>.Binding
     let onImport: () -> Void
     let onExport: () -> Void
 
@@ -29,14 +26,7 @@ struct SidebarListView: View {
         case let .tag(tag):
             items = items.filter { $0.tags.contains(where: { $0.caseInsensitiveCompare(tag) == .orderedSame }) }
         }
-
-        guard !searchText.isEmpty else { return sort(items) }
-        let query = searchText.lowercased()
-        let filtered = items.filter { prompt in
-            let searchable = (prompt.title + " " + prompt.body + " " + prompt.tags.joined(separator: " ")).lowercased()
-            return searchable.contains(query)
-        }
-        return sort(filtered)
+        return sort(items)
     }
 
     private func sort(_ items: [PromptItem]) -> [PromptItem] {
@@ -51,16 +41,6 @@ struct SidebarListView: View {
     var body: some View {
         List {
             Section {
-                TextField("搜索模板", text: $searchText)
-                    .textFieldStyle(.roundedBorder)
-                    .focused(searchFieldFocus)
-                    .padding(.vertical, 1)
-                    .frame(maxWidth: .infinity)
-            }
-            .listRowInsets(EdgeInsets(top: 8, leading: 12, bottom: 2, trailing: 12))
-            .listRowBackground(Color.clear)
-
-            Section {
                 HStack(spacing: 8) {
                     FilterChip(title: "全部", isActive: activeFilter == .all) {
                         activeFilter = .all
@@ -72,7 +52,7 @@ struct SidebarListView: View {
                 .frame(maxWidth: .infinity, alignment: .center)
                 .padding(.vertical, 2)
             }
-            .listRowInsets(EdgeInsets(top: 2, leading: 12, bottom: 0, trailing: 12))
+            .listRowInsets(EdgeInsets(top: 8, leading: 12, bottom: 0, trailing: 12))
             .listRowBackground(Color.clear)
 
             Section("模板") {
@@ -106,14 +86,6 @@ struct SidebarListView: View {
         .scrollContentBackground(.hidden)
         .background(Color.appBackground)
         .navigationTitle("Sparkify")
-        .toolbar {
-            ToolbarItem(placement: .primaryAction) {
-                Button(action: addPrompt) {
-                    Label("新建模板", systemImage: "plus")
-                }
-                .keyboardShortcut("n", modifiers: .command)
-            }
-        }
         .safeAreaInset(edge: .bottom) {
             HStack(spacing: 12) {
                 SidebarActionButton(title: "导入", action: onImport)

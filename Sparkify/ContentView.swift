@@ -54,11 +54,8 @@ struct ContentView: View {
             SidebarListView(
                 prompts: prompts,
                 presentedPrompt: $presentedPrompt,
-                addPrompt: addPrompt,
                 deletePrompt: deletePrompts,
-                searchText: $searchText,
                 activeFilter: $activeFilter,
-                searchFieldFocus: $searchFieldFocused,
                 onImport: { isImporting = true },
                 onExport: { prepareExport() }
             )
@@ -70,7 +67,9 @@ struct ContentView: View {
                 onSelectFilter: { activeFilter = $0 },
                 onOpenDetail: { presentedPrompt = $0 },
                 onImport: { isImporting = true },
-                onExport: { prepareExport() }
+                onExport: { prepareExport() },
+                searchText: $searchText,
+                onAddPrompt: addPrompt
             )
         }
         .navigationSplitViewStyle(.balanced)
@@ -137,9 +136,8 @@ struct ContentView: View {
         withAnimation {
             let newPrompt = PromptItem(
                 title: "新模板",
-                body: "Hello {name}, welcome to {product}."
+                body: ""
             )
-            synchronizeParams(for: newPrompt)
             modelContext.insert(newPrompt)
             presentedPrompt = newPrompt
             do {
