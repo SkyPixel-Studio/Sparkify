@@ -7,7 +7,11 @@
 - Reliability promises: autosave on every edit, SwiftData persistence resilient to crashes, and copy actions that never block flow.
 
 ## Project Structure & Module Organization
-- `Sparkify/` — SwiftUI production code. Key areas: `ContentView.swift` (grid UI + commands), `Services/` (template engine, transfer utilities), and `Models/` (SwiftData models).
+- `Sparkify/` — SwiftUI生产代码入口：`ContentView.swift` 负责场景状态与导航拼装，其他 UI 拆分在 `Views/`。
+- `Sparkify/Views/` — 视图模块化目录：`Root/`（列表过滤枚举等）、`Sidebar/`、`Templates/`、`PromptDetail/`、以及 `Components/`（PinGlyph、FilterChip、HUD、TagFlowLayout 等复用组件）。
+- `Sparkify/Services/` — 业务服务：`PromptTransfer/`（导入导出文档与错误扩展）、`TemplateEngine.swift`、`SeedDataLoader.swift`，以及 `UI/`（场景动作聚合、Alert/Toast 模型）。
+- `Sparkify/Design/` — 设计令牌，目前包含 `Color+Tokens.swift`。
+- `Sparkify/Models/` — SwiftData 持久化模型层。
 - `SparkifyTests/` — XCTest targets, currently covering template parsing and prompt transfer logic.
 - `Assets.xcassets/` — App icons and color assets; keep the neon yellow token in sync with design updates.
 
