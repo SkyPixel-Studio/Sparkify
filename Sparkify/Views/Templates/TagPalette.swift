@@ -26,7 +26,9 @@ enum TagPalette {
         guard styles.isEmpty == false else {
             return TagStyle(background: Color.neonYellow.opacity(0.3), foreground: .black)
         }
-        let index = abs(tag.hashValue) % styles.count
+        // Use stable hash based on UTF-8 bytes to ensure consistent colors across app launches
+        let hash = tag.utf8.reduce(0) { ($0 &* 31 &+ Int($1)) & 0x7FFFFFFF }
+        let index = hash % styles.count
         return styles[index]
     }
 }
