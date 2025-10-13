@@ -29,6 +29,11 @@ struct TemplateCardView: View {
         let id: PersistentIdentifier
     }
 
+    private struct ContextQuickActionSnapshot {
+        let id: String
+        let isPinned: Bool
+    }
+
     @Environment(\.modelContext) private var modelContext
     @Bindable var prompt: PromptItem
 
@@ -118,20 +123,92 @@ struct TemplateCardView: View {
         isCopyHovered ? Color.neonYellow.opacity(0.9) : Color.clear
     }
 
+    private let quickActionVisualDiameter: CGFloat = 26
+    private let quickActionTapTarget: CGFloat = 34
+
     private var quickActionBackground: Color {
-        isQuickActionHovered ? Color.cardSurface.opacity(0.9) : Color.clear
+        isQuickActionHovered ? Color.appForeground.opacity(0.08) : .clear
     }
 
     private var quickActionForeground: Color {
-        Color.appForeground.opacity(isQuickActionHovered ? 0.9 : 0.75)
-    }
-
-    private var quickActionBorder: Color {
-        Color.cardOutline.opacity(isQuickActionHovered ? 0.85 : 0.6)
+        Color.appForeground.opacity(isQuickActionHovered ? 0.85 : 0.7)
     }
 
     private var interactionAnimation: Animation {
         .spring(response: 0.2, dampingFraction: 0.82)
+    }
+
+    /// Snapshot for inline quick action menu showing full metadata
+    private func makeInlineQuickActionSnapshot() -> TemplateInlineQuickActionMenu.Snapshot {
+        TemplateInlineQuickActionMenu.Snapshot(
+            id: prompt.uuid,
+            isPinned: prompt.pinned,
+            createdAt: prompt.createdAt,
+            updatedAt: prompt.updatedAt,
+            tags: prompt.tags,
+            toolboxApps: toolboxApps.map {
+                TemplateInlineQuickActionMenu.ToolboxAppLite(
+                    id: $0.id,
+                    displayName: $0.displayName,
+                    kind: $0.optionKind
+                )
+            }
+        )
+    }
+
+    /// Snapshot for lightweight context menu usage
+    private func makeContextQuickActionSnapshot() -> ContextQuickActionSnapshot {
+        ContextQuickActionSnapshot(
+            id: prompt.uuid,
+            isPinned: prompt.pinned
+        )
+    }
+
+    private var contextMenuConfiguration: TemplateCardContextMenuBridge.Configuration {
+        let snapshot = makeContextQuickActionSnapshot()
+        let title = prompt.title.isEmpty ? "未命名模板" : prompt.title
+        return TemplateCardContextMenuBridge.Configuration(
+            headerTitle: title,
+            actions: [
+                .init(
+                    title: "编辑模板",
+                    systemImageName: "rectangle.and.pencil.and.ellipsis"
+                ) {
+                    sendQuickAction(.openDetail(id: snapshot.id))
+                },
+                .init(
+                    title: snapshot.isPinned ? "取消置顶" : "置顶此模板",
+                    systemImageName: "pin"
+                ) {
+                    sendQuickAction(.togglePin(id: snapshot.id))
+                },
+                .init(
+                    title: "更改摘要…",
+                    systemImageName: "text.badge.star"
+                ) {
+                    sendQuickAction(.rename(id: snapshot.id))
+                },
+                .init(
+                    title: "克隆模板",
+                    systemImageName: "doc.on.doc"
+                ) {
+                    sendQuickAction(.clone(id: snapshot.id))
+                },
+                .init(
+                    title: "重置所有参数",
+                    systemImageName: "arrow.counterclockwise.circle"
+                ) {
+                    sendQuickAction(.resetAllParams(id: snapshot.id))
+                },
+                .init(
+                    title: "删除模板",
+                    systemImageName: "trash",
+                    role: .destructive
+                ) {
+                    sendQuickAction(.delete(id: snapshot.id))
+                }
+            ]
+        )
     }
 
     init(
@@ -174,6 +251,7 @@ struct TemplateCardView: View {
         }
         .contentShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
         .onHover { hovering in
+            guard isHoveringCard != hovering else { return }
             withAnimation(interactionAnimation) {
                 isHoveringCard = hovering
             }
@@ -182,23 +260,12 @@ struct TemplateCardView: View {
         .onTapGesture(count: 2) {
             onOpenDetail()
         }
-        .id(prompt.id)
-        .background(
-            QuickActionContextMenuAttacher {
-                TemplateQuickActionMenu.makeNativeMenu(
-                    prompt: prompt,
-                    onOpenDetail: onOpenDetail,
-                    onTogglePin: { togglePinned() },
-                    onClone: { onClone(prompt) },
-                    onDelete: { showDeleteConfirmation = true },
-                    onRename: { presentRenameSheet() },
-                    onResetAllParams: { showResetAllConfirmation = true },
-                    onFilterByTag: { tag in onFilterByTag(tag) },
-                    toolboxApps: toolboxApps,
-                    onLaunchToolboxApp: onLaunchToolboxApp
-                )
-            }
+        // .id(prompt.id)
+        .overlay(
+            TemplateCardContextMenuBridge(configuration: contextMenuConfiguration)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
         )
+        .id(prompt.id)
         .confirmationDialog(
             "重置参数",
             isPresented: Binding(
@@ -285,6 +352,7 @@ struct TemplateCardView: View {
                     }
                     .buttonStyle(.plain)
                     .onHover { hovering in
+                        guard isPinHovered != hovering else { return }
                         withAnimation(interactionAnimation) {
                             isPinHovered = hovering
                         }
@@ -304,36 +372,27 @@ struct TemplateCardView: View {
                     .buttonStyle(.plain)
                     .help("查看更多设置")
 
-                    ZStack {
-                        NativeMenuButton(
-                            prompt: prompt,
-                            toolboxApps: toolboxApps,
-                            onOpenDetail: onOpenDetail,
-                            onTogglePin: { togglePinned() },
-                            onClone: { onClone(prompt) },
-                            onDelete: { showDeleteConfirmation = true },
-                            onRename: { presentRenameSheet() },
-                            onResetAllParams: { showResetAllConfirmation = true },
-                            onFilterByTag: { tag in onFilterByTag(tag) },
-                            onLaunchToolboxApp: onLaunchToolboxApp
+                    Menu {
+                        let snapshot = makeInlineQuickActionSnapshot()
+                        TemplateInlineQuickActionMenu(
+                            snapshot: snapshot,
+                            onAction: sendQuickAction
                         )
-                        .frame(width: 40, height: 40)
-
+                    } label: {
                         Image(systemName: "ellipsis")
-                            .imageScale(.medium)
-                            .padding(8)
+                            .font(.system(size: 12, weight: .semibold))
                             .foregroundStyle(quickActionForeground)
+                            .frame(width: quickActionVisualDiameter, height: quickActionVisualDiameter)
                             .background(
                                 Capsule()
                                     .fill(quickActionBackground)
                             )
-                            .overlay(
-                                Capsule()
-                                    .stroke(quickActionBorder, lineWidth: 1)
-                            )
-                            .allowsHitTesting(false)
+                            .frame(width: quickActionTapTarget, height: quickActionTapTarget)
                     }
+                    .menuStyle(.borderlessButton)
+                    .menuIndicator(.hidden)
                     .onHover { hovering in
+                        guard isQuickActionHovered != hovering else { return }
                         withAnimation(interactionAnimation) {
                             isQuickActionHovered = hovering
                         }
@@ -376,6 +435,7 @@ struct TemplateCardView: View {
                     }
                     .buttonStyle(.plain)
                     .onHover { hovering in
+                        guard isCopyHovered != hovering else { return }
                         withAnimation(interactionAnimation) {
                             isCopyHovered = hovering
                         }
@@ -681,6 +741,42 @@ struct TemplateCardView: View {
             }
         }
         return attributed
+    }
+
+    private func sendQuickAction(_ action: TemplateInlineQuickActionMenu.QuickAction) {
+        DispatchQueue.main.async {
+            handleQuickAction(action)
+        }
+    }
+
+    private func handleQuickAction(_ action: TemplateInlineQuickActionMenu.QuickAction) {
+        switch action {
+        case let .openDetail(id):
+            guard id == prompt.uuid else { return }
+            onOpenDetail()
+        case let .togglePin(id):
+            guard id == prompt.uuid else { return }
+            togglePinned()
+        case let .rename(id):
+            guard id == prompt.uuid else { return }
+            presentRenameSheet()
+        case let .clone(id):
+            guard id == prompt.uuid else { return }
+            onClone(prompt)
+        case let .resetAllParams(id):
+            guard id == prompt.uuid else { return }
+            showResetAllConfirmation = true
+        case let .delete(id):
+            guard id == prompt.uuid else { return }
+            showDeleteConfirmation = true
+        case let .filterByTag(id, tag):
+            guard id == prompt.uuid else { return }
+            onFilterByTag(tag)
+        case let .launchToolboxApp(id, appID):
+            guard id == prompt.uuid else { return }
+            guard let app = toolboxApps.first(where: { $0.id == appID }) else { return }
+            onLaunchToolboxApp(app)
+        }
     }
 
     private func presentRenameSheet() {

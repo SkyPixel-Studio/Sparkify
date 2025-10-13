@@ -73,7 +73,7 @@ struct SidebarListView: View {
                         .foregroundStyle(.secondary)
                         .padding(.vertical, 8)
                 } else {
-                    ForEach(displayedPrompts) { prompt in
+                    ForEach(displayedPrompts, id: \.uuid) { prompt in
                         SidebarPromptRow(
                             prompt: prompt,
                             isSelected: presentedPrompt?.uuid == prompt.uuid,

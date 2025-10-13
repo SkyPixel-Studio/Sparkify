@@ -156,7 +156,7 @@ struct TemplateGridView: View {
                     filterBar
 
                     LazyVGrid(columns: columns, spacing: 24) {
-                        ForEach(arrangedPrompts) { prompt in
+                        ForEach(arrangedPrompts, id: \.uuid) { prompt in
                             TemplateCardView(
                                 prompt: prompt,
                                 toolboxApps: enabledToolboxApps,
