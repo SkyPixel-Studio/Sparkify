@@ -2,13 +2,24 @@ import Foundation
 import SwiftData
 
 struct SeedDataLoader {
+    private static let hasSeededKey = "com.sparkify.hasSeededDefaultPrompts"
+    
     static func ensureSeedData(using context: ModelContext) throws {
+        // 检查 UserDefaults 标记，确保只在真正的初始化时创建种子数据
+        if UserDefaults.standard.bool(forKey: hasSeededKey) {
+            return
+        }
+        
+        // 双重检查：即使标记不存在，如果已有数据也不创建
         var descriptor = FetchDescriptor<PromptItem>()
         descriptor.fetchLimit = 1
         if let existing = try context.fetch(descriptor).first, existing.uuid.isEmpty == false {
+            // 数据已存在，标记为已初始化并返回
+            UserDefaults.standard.set(true, forKey: hasSeededKey)
             return
         }
 
+        // 真正的初始化：创建种子数据
         let seeds = defaultItems()
         for item in seeds {
             context.insert(item)
@@ -17,6 +28,9 @@ struct SeedDataLoader {
             VersioningService.ensureBaselineRevision(for: item, in: context, author: "Seed")
         }
         try context.save()
+        
+        // 标记已完成初始化
+        UserDefaults.standard.set(true, forKey: hasSeededKey)
     }
 
     private static func defaultItems() -> [PromptItem] {

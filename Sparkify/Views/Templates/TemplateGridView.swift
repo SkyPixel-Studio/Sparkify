@@ -23,6 +23,7 @@ enum PromptSortMode: String, CaseIterable {
 
 struct TemplateGridView: View {
     let prompts: [PromptItem]
+    let totalPromptCount: Int
     let availableTags: [String]
     let activeFilter: PromptListFilter
     let onSelectFilter: (PromptListFilter) -> Void
@@ -149,7 +150,14 @@ struct TemplateGridView: View {
     @ViewBuilder
     private var contentView: some View {
         if prompts.isEmpty {
-            TemplateEmptyStateView(onImport: onImport)
+            TemplateEmptyStateView(
+                hasAnyPrompts: totalPromptCount > 0,
+                activeFilter: activeFilter,
+                searchText: searchText,
+                onImport: onImport,
+                onAddPrompt: onAddPrompt,
+                onClearFilters: clearAllFilters
+            )
         } else {
             ScrollView {
                 VStack(alignment: .leading, spacing: 24) {
@@ -223,6 +231,13 @@ struct TemplateGridView: View {
             }
         } else {
             print("⚠️ [Toolbox] Failed to open \(app.displayName)")
+        }
+    }
+
+    private func clearAllFilters() {
+        withAnimation(.easeInOut(duration: 0.2)) {
+            onSelectFilter(.all)
+            searchText = ""
         }
     }
 }
@@ -343,27 +358,68 @@ private struct SortModeMenu: View {
 }
 
 private struct TemplateEmptyStateView: View {
+    let hasAnyPrompts: Bool
+    let activeFilter: PromptListFilter
+    let searchText: String
     let onImport: () -> Void
+    let onAddPrompt: () -> Void
+    let onClearFilters: () -> Void
+
+    private var isFiltered: Bool {
+        hasAnyPrompts && (activeFilter != .all || !searchText.isEmpty)
+    }
+
+    private var filterDescription: String {
+        var parts: [String] = []
+        
+        if case let .tag(tag) = activeFilter {
+            parts.append("标签「\(tag)」")
+        } else if case .pinned = activeFilter {
+            parts.append("置顶")
+        }
+        
+        if !searchText.isEmpty {
+            parts.append("搜索「\(searchText)」")
+        }
+        
+        return parts.joined(separator: " + ")
+    }
 
     var body: some View {
         VStack(spacing: 16) {
-            Image(systemName: "square.grid.2x2")
+            Image(systemName: isFiltered ? "line.3.horizontal.decrease.circle" : "square.grid.2x2")
                 .font(.system(size: 52, weight: .light))
                 .foregroundStyle(Color.secondary.opacity(0.6))
 
-            Text("还没有模板哦")
-                .font(.title3.weight(.semibold))
-            Text("先在左侧新建一个模板，或者导入 JSON，马上开始复用你的提示词。")
-                .font(.callout)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-                .frame(maxWidth: 320)
-
-            HStack(spacing: 12) {
-                TemplateActionButton(title: "导入 JSON", systemImage: "square.and.arrow.down", action: onImport)
-                Text("或按 ⌘N 立即新建")
-                    .font(.caption)
+            if isFiltered {
+                // Filtered empty state
+                Text("当前条件下没有模板")
+                    .font(.title3.weight(.semibold))
+                Text("筛选条件：\(filterDescription)")
+                    .font(.callout)
                     .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: 360)
+
+                TemplateActionButton(
+                    title: "清空筛选条件",
+                    systemImage: "xmark.circle",
+                    action: onClearFilters
+                )
+            } else {
+                // Truly empty state
+                Text("还没有模板哦")
+                    .font(.title3.weight(.semibold))
+                Text("先新建一个模板，或者导入 JSON，马上开始复用你的提示词。")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: 320)
+
+                HStack(spacing: 12) {
+                    TemplateActionButton(title: "新建模板", systemImage: "plus.circle.fill", action: onAddPrompt)
+                    TemplateActionButton(title: "导入 JSON", systemImage: "square.and.arrow.down", action: onImport)
+                }
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)

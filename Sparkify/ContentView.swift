@@ -64,6 +64,7 @@ struct ContentView: View {
         } detail: {
             TemplateGridView(
                 prompts: filteredPrompts,
+                totalPromptCount: prompts.count,
                 availableTags: availableTags,
                 activeFilter: activeFilter,
                 onSelectFilter: { activeFilter = $0 },
@@ -257,6 +258,19 @@ struct ContentView: View {
     }
 
     private func handleImport(from url: URL) {
+        // 获取安全范围资源访问权限
+        guard url.startAccessingSecurityScopedResource() else {
+            alertItem = AlertItem(
+                title: "导入失败",
+                message: "无法访问选定的文件，请检查文件权限。"
+            )
+            return
+        }
+        
+        defer {
+            url.stopAccessingSecurityScopedResource()
+        }
+        
         do {
             let data = try Data(contentsOf: url)
             let summary = try PromptTransferService.importData(data, into: modelContext)
