@@ -31,6 +31,8 @@ struct TemplateGridView: View {
     let onExport: () -> Void
     @Binding var searchText: String
     let onAddPrompt: () -> Void
+    let onDeletePrompt: (PromptItem) -> Void
+    let onClonePrompt: (PromptItem) -> Void
     
     @State private var sortMode: PromptSortMode = .alphabetical
     @State private var preferences = PreferencesService.shared
@@ -157,7 +159,16 @@ struct TemplateGridView: View {
                         ForEach(arrangedPrompts) { prompt in
                             TemplateCardView(
                                 prompt: prompt,
+                                toolboxApps: enabledToolboxApps,
                                 onCopy: handleCopyAction,
+                                onDelete: onDeletePrompt,
+                                onClone: onClonePrompt,
+                                onFilterByTag: { tag in
+                                    withAnimation(.easeInOut(duration: 0.2)) {
+                                        onSelectFilter(.tag(tag))
+                                    }
+                                },
+                                onLaunchToolboxApp: openToolboxApp,
                                 onOpenDetail: {
                                     onOpenDetail(prompt)
                                 }
@@ -171,6 +182,9 @@ struct TemplateGridView: View {
             }
             .scrollContentBackground(.hidden)
             .background(Color.appBackground)
+            .onAppear {
+                print("🏁 [GridView] Grid appeared with \(arrangedPrompts.count) prompts")
+            }
         }
     }
 

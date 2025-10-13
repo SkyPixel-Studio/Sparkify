@@ -71,7 +71,9 @@ struct ContentView: View {
                 onImport: { isImporting = true },
                 onExport: { prepareExport() },
                 searchText: $searchText,
-                onAddPrompt: addPrompt
+                onAddPrompt: addPrompt,
+                onDeletePrompt: deletePrompt(_:),
+                onClonePrompt: clonePrompt(_:)
             )
         }
         .navigationSplitViewStyle(.balanced)
@@ -159,6 +161,20 @@ struct ContentView: View {
         }
     }
 
+    private func deletePrompt(_ prompt: PromptItem) {
+        let displayName = prompt.title.isEmpty ? "未命名模板" : prompt.title
+        if presentedPrompt?.persistentModelID == prompt.persistentModelID {
+            presentedPrompt = nil
+        }
+
+        deletePrompts([prompt])
+        guard modelContext.hasChanges == false else { return }
+        showToast(
+            message: "已删除 \(displayName)",
+            icon: "trash.fill"
+        )
+    }
+
     private func deletePrompts(_ items: [PromptItem]) {
         guard items.isEmpty == false else { return }
         withAnimation {
@@ -169,6 +185,54 @@ struct ContentView: View {
                 print("删除模板失败: \(error)")
             }
         }
+    }
+
+    private func clonePrompt(_ prompt: PromptItem) {
+        let baseTitle = prompt.title.isEmpty ? "未命名模板" : prompt.title
+        let paramsCopy = prompt.params.map { param in
+            ParamKV(
+                key: param.key,
+                value: param.value,
+                defaultValue: param.defaultValue
+            )
+        }
+
+        let clonedTitle = makeClonedTitle(from: baseTitle)
+        let clonedPrompt = PromptItem(
+            title: clonedTitle,
+            body: prompt.body,
+            tags: prompt.tags,
+            params: paramsCopy
+        )
+
+        modelContext.insert(clonedPrompt)
+
+        do {
+            try modelContext.save()
+            showToast(
+                message: "已克隆 \(baseTitle)",
+                icon: "doc.on.doc.fill"
+            )
+        } catch {
+            alertItem = AlertItem(
+                title: "克隆失败",
+                message: error.localizedDescription
+            )
+        }
+    }
+
+    private func makeClonedTitle(from base: String) -> String {
+        let suffix = " 副本"
+        if base.hasSuffix(suffix) == false {
+            return base + suffix
+        }
+        var attempt = base
+        var index = 2
+        while prompts.contains(where: { $0.title == attempt }) {
+            attempt = base + " 副本 \(index)"
+            index += 1
+        }
+        return attempt
     }
 
     private func prepareExport() {

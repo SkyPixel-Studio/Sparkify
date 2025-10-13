@@ -34,6 +34,11 @@ struct TemplateCardView: View {
 
     let onOpenDetail: () -> Void
     let onCopy: () -> Void
+    let onDelete: (PromptItem) -> Void
+    let onClone: (PromptItem) -> Void
+    let onFilterByTag: (String) -> Void
+    let onLaunchToolboxApp: (ToolboxApp) -> Void
+    let toolboxApps: [ToolboxApp]
 
     @State private var showCopiedHUD = false
     @State private var isMarkdownPreview = false
@@ -41,9 +46,13 @@ struct TemplateCardView: View {
     @FocusState private var focusedParam: ParamFocusTarget?
     @State private var paramToReset: ParamKV?
     @State private var showResetAllConfirmation = false
+    @State private var showDeleteConfirmation = false
     @State private var isHoveringCard = false
     @State private var isPinHovered = false
     @State private var isCopyHovered = false
+    @State private var isQuickActionHovered = false
+    @State private var isShowingRenameSheet = false
+    @State private var draftSummaryTitle = ""
 
     private var renderResult: TemplateEngine.RenderResult {
         let values = Dictionary(uniqueKeysWithValues: prompt.params.map { ($0.key, $0.resolvedValue) })
@@ -109,17 +118,39 @@ struct TemplateCardView: View {
         isCopyHovered ? Color.neonYellow.opacity(0.9) : Color.clear
     }
 
+    private var quickActionBackground: Color {
+        isQuickActionHovered ? Color.cardSurface.opacity(0.9) : Color.clear
+    }
+
+    private var quickActionForeground: Color {
+        Color.appForeground.opacity(isQuickActionHovered ? 0.9 : 0.75)
+    }
+
+    private var quickActionBorder: Color {
+        Color.cardOutline.opacity(isQuickActionHovered ? 0.85 : 0.6)
+    }
+
     private var interactionAnimation: Animation {
         .spring(response: 0.2, dampingFraction: 0.82)
     }
 
     init(
         prompt: PromptItem,
+        toolboxApps: [ToolboxApp] = [],
         onCopy: @escaping () -> Void = {},
+        onDelete: @escaping (PromptItem) -> Void = { _ in },
+        onClone: @escaping (PromptItem) -> Void = { _ in },
+        onFilterByTag: @escaping (String) -> Void = { _ in },
+        onLaunchToolboxApp: @escaping (ToolboxApp) -> Void = { _ in },
         onOpenDetail: @escaping () -> Void
     ) {
         self._prompt = Bindable(prompt)
         self.onCopy = onCopy
+        self.onDelete = onDelete
+        self.onClone = onClone
+        self.onFilterByTag = onFilterByTag
+        self.onLaunchToolboxApp = onLaunchToolboxApp
+        self.toolboxApps = toolboxApps
         self.onOpenDetail = onOpenDetail
     }
 
@@ -148,6 +179,26 @@ struct TemplateCardView: View {
             }
         }
         .animation(interactionAnimation, value: isHoveringCard)
+        .onTapGesture(count: 2) {
+            onOpenDetail()
+        }
+        .id(prompt.id)
+        .background(
+            QuickActionContextMenuAttacher {
+                TemplateQuickActionMenu.makeNativeMenu(
+                    prompt: prompt,
+                    onOpenDetail: onOpenDetail,
+                    onTogglePin: { togglePinned() },
+                    onClone: { onClone(prompt) },
+                    onDelete: { showDeleteConfirmation = true },
+                    onRename: { presentRenameSheet() },
+                    onResetAllParams: { showResetAllConfirmation = true },
+                    onFilterByTag: { tag in onFilterByTag(tag) },
+                    toolboxApps: toolboxApps,
+                    onLaunchToolboxApp: onLaunchToolboxApp
+                )
+            }
+        )
         .confirmationDialog(
             "重置参数",
             isPresented: Binding(
@@ -178,6 +229,34 @@ struct TemplateCardView: View {
         } message: {
             Text("确定要将所有 \(prompt.params.count) 个参数重置为默认值吗？此操作将覆盖所有当前值。")
         }
+        .confirmationDialog(
+            "删除模板",
+            isPresented: $showDeleteConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button("删除", role: .destructive) {
+                onDelete(prompt)
+                showDeleteConfirmation = false
+            }
+            Button("取消", role: .cancel) {
+                showDeleteConfirmation = false
+            }
+        } message: {
+            Text("确定要删除「\(prompt.title.isEmpty ? "未命名模板" : prompt.title)」吗？此操作不可撤销。")
+        }
+        .sheet(isPresented: $isShowingRenameSheet) {
+            RenameSummarySheet(
+                title: $draftSummaryTitle,
+                onCancel: {
+                    isShowingRenameSheet = false
+                },
+                onConfirm: {
+                    applyNewSummary()
+                }
+            )
+            .frame(minWidth: 320, minHeight: 180)
+        }
+        .accessibilityHidden(true)
     }
 
     private var header: some View {
@@ -224,6 +303,44 @@ struct TemplateCardView: View {
                     }
                     .buttonStyle(.plain)
                     .help("查看更多设置")
+
+                    ZStack {
+                        NativeMenuButton(
+                            prompt: prompt,
+                            toolboxApps: toolboxApps,
+                            onOpenDetail: onOpenDetail,
+                            onTogglePin: { togglePinned() },
+                            onClone: { onClone(prompt) },
+                            onDelete: { showDeleteConfirmation = true },
+                            onRename: { presentRenameSheet() },
+                            onResetAllParams: { showResetAllConfirmation = true },
+                            onFilterByTag: { tag in onFilterByTag(tag) },
+                            onLaunchToolboxApp: onLaunchToolboxApp
+                        )
+                        .frame(width: 40, height: 40)
+
+                        Image(systemName: "ellipsis")
+                            .imageScale(.medium)
+                            .padding(8)
+                            .foregroundStyle(quickActionForeground)
+                            .background(
+                                Capsule()
+                                    .fill(quickActionBackground)
+                            )
+                            .overlay(
+                                Capsule()
+                                    .stroke(quickActionBorder, lineWidth: 1)
+                            )
+                            .allowsHitTesting(false)
+                    }
+                    .onHover { hovering in
+                        withAnimation(interactionAnimation) {
+                            isQuickActionHovered = hovering
+                        }
+                    }
+                    .scaleEffect(isQuickActionHovered ? 1.05 : 1.0)
+                    .animation(interactionAnimation, value: isQuickActionHovered)
+                    .help("快捷操作")
                 }
             }
 
@@ -566,6 +683,20 @@ struct TemplateCardView: View {
         return attributed
     }
 
+    private func presentRenameSheet() {
+        draftSummaryTitle = prompt.title
+        isShowingRenameSheet = true
+    }
+
+    private func applyNewSummary() {
+        let trimmed = draftSummaryTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed != prompt.title {
+            prompt.title = trimmed
+            persistWithTimestampUpdate()
+        }
+        isShowingRenameSheet = false
+    }
+
     // 仅保存，不更新时间戳（用于参数值变化、置顶等 UI 状态变化）
     private func persistChange() {
         do {
@@ -638,6 +769,48 @@ struct TemplateCardView: View {
             }
             persistChange()
             showResetAllConfirmation = false
+        }
+    }
+}
+
+private struct RenameSummarySheet: View {
+    @Binding var title: String
+    let onCancel: () -> Void
+    let onConfirm: () -> Void
+    @FocusState private var isFieldFocused: Bool
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            VStack(alignment: .leading, spacing: 6) {
+                Text("更改摘要")
+                    .font(.title3.weight(.semibold))
+                Text("更新模板摘要会刷新最近修改时间。")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
+
+            TextField("未命名模板", text: $title)
+                .textFieldStyle(.roundedBorder)
+                .focused($isFieldFocused)
+                .onSubmit(onConfirm)
+
+            Spacer(minLength: 0)
+
+            HStack {
+                Spacer()
+                Button("取消", role: .cancel, action: onCancel)
+                Button("保存") {
+                    onConfirm()
+                }
+                .keyboardShortcut(.defaultAction)
+            }
+        }
+        .padding(24)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .onAppear {
+            DispatchQueue.main.async {
+                isFieldFocused = true
+            }
         }
     }
 }
