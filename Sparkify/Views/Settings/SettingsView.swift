@@ -17,6 +17,7 @@ struct SettingsView: View {
     @State private var preferences = PreferencesService.shared
     @State private var showResetConfirmation = false
     @State private var showResetSuccess = false
+    @State private var iconRefreshID = UUID()
     
     private var appVersion: String {
         Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
@@ -86,9 +87,22 @@ struct SettingsView: View {
                                 }
                             }
                         )
+                        .id("\(app.id)-\(iconRefreshID)")
                     }
                 } header: {
-                    Text("Toolbox 快捷入口")
+                    HStack {
+                        Text("Toolbox 快捷入口")
+                        Spacer()
+                        Button {
+                            clearIconCache()
+                        } label: {
+                            Image(systemName: "arrow.clockwise")
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundStyle(.secondary)
+                        }
+                        .buttonStyle(.plain)
+                        .help("清理图标缓存")
+                    }
                 } footer: {
                     Text("启用后，模板列表右下角会出现 toolbox 按钮，可快速打开所选的 AI 助手或网页。")
                         .font(.caption)
@@ -222,6 +236,12 @@ struct SettingsView: View {
         print("Has Changes: \(modelContext.hasChanges)")
         print("Total Prompts: \(prompts.count)")
         print(String(repeating: "=", count: 60) + "\n")
+    }
+    
+    private func clearIconCache() {
+        ToolboxLauncher.shared.evictCache()
+        iconRefreshID = UUID()
+        print("🗑️ [Settings] Icon cache cleared")
     }
 }
 

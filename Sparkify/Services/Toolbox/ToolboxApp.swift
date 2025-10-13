@@ -13,16 +13,16 @@ struct ToolboxApp: Identifiable, Hashable {
         case remoteFavicon(URL)
         case systemImage(name: String)
     }
-
+    
     enum LaunchTarget: Hashable {
         case native(bundleID: String, fallbackURL: URL?)
         case web(url: URL)
     }
-
+    
     enum OptionKind: String {
         case nativeApp
         case web
-
+        
         var badgeText: String {
             switch self {
             case .nativeApp: return "App"
@@ -30,7 +30,7 @@ struct ToolboxApp: Identifiable, Hashable {
             }
         }
     }
-
+    
     let id: String
     let displayName: String
     let summary: String
@@ -38,7 +38,7 @@ struct ToolboxApp: Identifiable, Hashable {
     let iconSources: [IconSource]
     let optionKind: OptionKind
     let isEnabledByDefault: Bool
-
+    
     static let all: [ToolboxApp] = [
         ToolboxApp(
             id: "chatgpt-app",
@@ -109,12 +109,72 @@ struct ToolboxApp: Identifiable, Hashable {
             isEnabledByDefault:  true
         ),
         ToolboxApp(
+            id: "aistudio",
+            displayName: "Google AI Studio",
+            summary: "Google AI Studio 网页客户端，可以访问更多 Google DeepMind 模型",
+            launchTarget: .web(url: URL(string: "https://aistudio.google.com/")!),
+            iconSources: [
+                .remoteFavicon(URL(string: "https://www.gstatic.com/aistudio/ai_studio_favicon_2_32x32.png")!),
+                .systemImage(name: "globe")
+            ],
+            optionKind: .web,
+            isEnabledByDefault: false
+        ),
+        ToolboxApp(
             id: "grok",
             displayName: "Grok",
             summary: "xAI Grok 网页客户端",
             launchTarget: .web(url: URL(string: "https://grok.com")!),
             iconSources: [
                 .remoteFavicon(URL(string: "https://grok.com/images/favicon-light.png")!),
+                .systemImage(name: "globe")
+            ],
+            optionKind: .web,
+            isEnabledByDefault: false
+        ),
+        ToolboxApp(
+            id: "qwen",
+            displayName: "Qwen",
+            summary: "Qwen 网页客户端",
+            launchTarget: .web(url: URL(string: "https://chat.qwen.ai/")!),
+            iconSources: [
+                .remoteFavicon(URL(string: "https://assets.alicdn.com/g/qwenweb/qwen-webui-fe/0.0.223/favicon.png")!),
+                .systemImage(name: "globe")
+            ],
+            optionKind: .web,
+            isEnabledByDefault: false
+        ),
+        ToolboxApp(
+            id: "qwen-cn",
+            displayName: "通义千问",
+            summary: "通义千问（中国大陆） 网页客户端",
+            launchTarget: .web(url: URL(string: "https://www.tongyi.com/")!),
+            iconSources: [
+                .remoteFavicon(URL(string: "https://img.alicdn.com/imgextra/i4/O1CN01EfJVFQ1uZPd7W4W6i_!!6000000006051-2-tps-112-112.png")!),
+                .systemImage(name: "globe")
+            ],
+            optionKind: .web,
+            isEnabledByDefault: false
+        ),
+        ToolboxApp(
+            id: "doubao",
+            displayName: "豆包",
+            summary: " ByteDance 豆包大模型 网页客户端",
+            launchTarget: .web(url: URL(string: "https://www.doubao.com")!),
+            iconSources: [
+                .remoteFavicon(URL(string: "https://ark-auto-2100466578-cn-beijing-default.tos-cn-beijing.volces.com/model_cardPt9S1OY9sV.png")!),
+                .systemImage(name: "globe")
+            ],
+            optionKind: .web,
+            isEnabledByDefault: false
+        ),
+        ToolboxApp(
+            id: "deepseek",
+            displayName: "DeepSeek",
+            summary: " DeepSeek 网页客户端",
+            launchTarget: .web(url: URL(string: "https://chat.deepseek.com/")!),
+            iconSources: [
+                .remoteFavicon(URL(string: "https://chat.deepseek.com/favicon.svg")!),
                 .systemImage(name: "globe")
             ],
             optionKind: .web,

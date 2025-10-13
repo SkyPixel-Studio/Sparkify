@@ -73,10 +73,20 @@ final class ToolboxLauncher {
     }
 
     func evictCache(for appID: String? = nil) {
+        // Clear memory cache
         if let appID {
             iconCache.removeObject(forKey: appID as NSString)
+            // Clear disk cache for specific app
+            let url = cacheDirectory.appendingPathComponent("\(appID).png")
+            try? fileManager.removeItem(at: url)
         } else {
             iconCache.removeAllObjects()
+            // Clear all disk cache files
+            if let cachedFiles = try? fileManager.contentsOfDirectory(at: cacheDirectory, includingPropertiesForKeys: nil) {
+                for fileURL in cachedFiles {
+                    try? fileManager.removeItem(at: fileURL)
+                }
+            }
         }
     }
 
