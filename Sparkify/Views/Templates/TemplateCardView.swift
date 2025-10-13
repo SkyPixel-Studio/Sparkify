@@ -55,7 +55,9 @@ struct TemplateCardView: View {
     @State private var isHoveringCard = false
     @State private var isPinHovered = false
     @State private var isCopyHovered = false
-    @State private var isQuickActionHovered = false
+    @State private var isEditHovered = false
+    @State private var isResetAllHovered = false
+    @State private var hoveredResetParamID: PersistentIdentifier?
     @State private var isShowingRenameSheet = false
     @State private var draftSummaryTitle = ""
 
@@ -126,14 +128,6 @@ struct TemplateCardView: View {
     private let quickActionVisualDiameter: CGFloat = 26
     private let quickActionTapTarget: CGFloat = 34
 
-    private var quickActionBackground: Color {
-        isQuickActionHovered ? Color.appForeground.opacity(0.08) : .clear
-    }
-
-    private var quickActionForeground: Color {
-        Color.appForeground.opacity(isQuickActionHovered ? 0.85 : 0.7)
-    }
-
     private var interactionAnimation: Animation {
         .spring(response: 0.2, dampingFraction: 0.82)
     }
@@ -175,6 +169,18 @@ struct TemplateCardView: View {
                     systemImageName: "rectangle.and.pencil.and.ellipsis"
                 ) {
                     sendQuickAction(.openDetail(id: snapshot.id))
+                },
+                .init(
+                    title: "复制",
+                    systemImageName: "square.and.pencil"
+                ) {
+                    sendQuickAction(.copyFilledPrompt(id: snapshot.id))
+                },
+                .init(
+                    title: "仅复制模板",
+                    systemImageName: "doc.on.doc"
+                ) {
+                    sendQuickAction(.copyTemplateOnly(id: snapshot.id))
                 },
                 .init(
                     title: snapshot.isPinned ? "取消置顶" : "置顶此模板",
@@ -366,10 +372,19 @@ struct TemplateCardView: View {
                     } label: {
                         Image(systemName: "rectangle.and.pencil.and.ellipsis")
                             .imageScale(.medium)
+                            .foregroundStyle(Color.appForeground.opacity(isEditHovered ? 1.0 : 0.7))
                             .padding(8)
-                            .background(Capsule().strokeBorder(Color.cardOutline.opacity(0.6), lineWidth: 1))
+                            .background(Capsule().strokeBorder(Color.cardOutline.opacity(isEditHovered ? 0.9 : 0.6), lineWidth: 1))
                     }
                     .buttonStyle(.plain)
+                    .onHover { hovering in
+                        guard isEditHovered != hovering else { return }
+                        withAnimation(interactionAnimation) {
+                            isEditHovered = hovering
+                        }
+                    }
+                    .scaleEffect(isEditHovered ? 1.04 : 1.0)
+                    .animation(interactionAnimation, value: isEditHovered)
                     .help("查看更多设置")
 
                     Menu {
@@ -380,25 +395,13 @@ struct TemplateCardView: View {
                         )
                     } label: {
                         Image(systemName: "ellipsis")
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundStyle(quickActionForeground)
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundStyle(Color.appForeground.opacity(0.7))
                             .frame(width: quickActionVisualDiameter, height: quickActionVisualDiameter)
-                            .background(
-                                Capsule()
-                                    .fill(quickActionBackground)
-                            )
                             .frame(width: quickActionTapTarget, height: quickActionTapTarget)
                     }
                     .menuStyle(.borderlessButton)
                     .menuIndicator(.hidden)
-                    .onHover { hovering in
-                        guard isQuickActionHovered != hovering else { return }
-                        withAnimation(interactionAnimation) {
-                            isQuickActionHovered = hovering
-                        }
-                    }
-                    .scaleEffect(isQuickActionHovered ? 1.05 : 1.0)
-                    .animation(interactionAnimation, value: isQuickActionHovered)
                     .help("快捷操作")
                 }
             }
@@ -483,19 +486,27 @@ struct TemplateCardView: View {
                             Text("重置所有")
                                 .font(.system(size: 12, weight: .semibold))
                         }
-                        .foregroundStyle(Color.appForeground.opacity(0.7))
+                        .foregroundStyle(Color.appForeground.opacity(isResetAllHovered ? 0.9 : 0.7))
                         .padding(.horizontal, 10)
                         .padding(.vertical, 5)
                         .background(
                             Capsule()
-                                .fill(Color.cardSurface)
+                                .fill(Color.cardSurface.opacity(isResetAllHovered ? 1.0 : 0.8))
                         )
                         .overlay(
                             Capsule()
-                                .stroke(Color.cardOutline.opacity(0.8), lineWidth: 1)
+                                .stroke(Color.cardOutline.opacity(isResetAllHovered ? 1.0 : 0.8), lineWidth: 1)
                         )
                     }
                     .buttonStyle(.plain)
+                    .onHover { hovering in
+                        guard isResetAllHovered != hovering else { return }
+                        withAnimation(interactionAnimation) {
+                            isResetAllHovered = hovering
+                        }
+                    }
+                    .scaleEffect(isResetAllHovered ? 1.04 : 1.0)
+                    .animation(interactionAnimation, value: isResetAllHovered)
                     .help("将所有参数重置为默认值")
                 }
                 .padding(.bottom, 4)
@@ -534,14 +545,22 @@ struct TemplateCardView: View {
                                 Button {
                                     paramToReset = paramModel
                                 } label: {
+                                    let isHovered = hoveredResetParamID == paramModel.persistentModelID
                                     Image(systemName: "arrow.counterclockwise")
                                         .font(.system(size: 11, weight: .semibold))
-                                        .foregroundStyle(Color.appForeground.opacity(0.6))
+                                        .foregroundStyle(Color.appForeground.opacity(isHovered ? 0.8 : 0.6))
                                         .frame(width: 24, height: 24)
-                                        .background(Circle().fill(Color.cardSurface))
-                                        .overlay(Circle().stroke(Color.cardOutline.opacity(0.8), lineWidth: 1))
+                                        .background(Circle().fill(Color.cardSurface.opacity(isHovered ? 1.0 : 0.8)))
+                                        .overlay(Circle().stroke(Color.cardOutline.opacity(isHovered ? 1.0 : 0.8), lineWidth: 1))
                                 }
                                 .buttonStyle(.plain)
+                                .onHover { hovering in
+                                    withAnimation(interactionAnimation) {
+                                        hoveredResetParamID = hovering ? paramModel.persistentModelID : nil
+                                    }
+                                }
+                                .scaleEffect(hoveredResetParamID == paramModel.persistentModelID ? 1.08 : 1.0)
+                                .animation(interactionAnimation, value: hoveredResetParamID == paramModel.persistentModelID)
                                 .help("重置为默认值")
                             }
                             
@@ -604,14 +623,22 @@ struct TemplateCardView: View {
                             Button {
                                 paramToReset = paramModel
                             } label: {
+                                let isHovered = hoveredResetParamID == paramModel.persistentModelID
                                 Image(systemName: "arrow.counterclockwise")
                                     .font(.system(size: 11, weight: .semibold))
-                                    .foregroundStyle(Color.appForeground.opacity(0.6))
+                                    .foregroundStyle(Color.appForeground.opacity(isHovered ? 0.8 : 0.6))
                                     .frame(width: 24, height: 24)
-                                    .background(Circle().fill(Color.cardSurface))
-                                    .overlay(Circle().stroke(Color.cardOutline.opacity(0.8), lineWidth: 1))
+                                    .background(Circle().fill(Color.cardSurface.opacity(isHovered ? 1.0 : 0.8)))
+                                    .overlay(Circle().stroke(Color.cardOutline.opacity(isHovered ? 1.0 : 0.8), lineWidth: 1))
                             }
                             .buttonStyle(.plain)
+                            .onHover { hovering in
+                                withAnimation(interactionAnimation) {
+                                    hoveredResetParamID = hovering ? paramModel.persistentModelID : nil
+                                }
+                            }
+                            .scaleEffect(hoveredResetParamID == paramModel.persistentModelID ? 1.08 : 1.0)
+                            .animation(interactionAnimation, value: hoveredResetParamID == paramModel.persistentModelID)
                             .help("重置为默认值")
                         }
                         .padding(.horizontal, 4)
@@ -754,6 +781,12 @@ struct TemplateCardView: View {
         case let .openDetail(id):
             guard id == prompt.uuid else { return }
             onOpenDetail()
+        case let .copyFilledPrompt(id):
+            guard id == prompt.uuid else { return }
+            copyFilledPrompt()
+        case let .copyTemplateOnly(id):
+            guard id == prompt.uuid else { return }
+            copyTemplateOnly()
         case let .togglePin(id):
             guard id == prompt.uuid else { return }
             togglePinned()
@@ -775,6 +808,7 @@ struct TemplateCardView: View {
         case let .launchToolboxApp(id, appID):
             guard id == prompt.uuid else { return }
             guard let app = toolboxApps.first(where: { $0.id == appID }) else { return }
+            copyFilledPrompt()
             onLaunchToolboxApp(app)
         }
     }

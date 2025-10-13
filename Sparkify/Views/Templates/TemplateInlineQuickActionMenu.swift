@@ -28,6 +28,8 @@ struct TemplateInlineQuickActionMenu: View {
 
     enum QuickAction: Hashable {
         case openDetail(id: String)
+        case copyFilledPrompt(id: String)
+        case copyTemplateOnly(id: String)
         case togglePin(id: String)
         case rename(id: String)
         case clone(id: String)
@@ -55,6 +57,8 @@ struct TemplateInlineQuickActionMenu: View {
         private static func makeID(for action: QuickAction) -> String {
             switch action {
             case let .openDetail(id): return "openDetail-\(id)"
+            case let .copyFilledPrompt(id): return "copyFilled-\(id)"
+            case let .copyTemplateOnly(id): return "copyTemplate-\(id)"
             case let .togglePin(id): return "togglePin-\(id)"
             case let .rename(id): return "rename-\(id)"
             case let .clone(id): return "clone-\(id)"
@@ -96,7 +100,7 @@ struct TemplateInlineQuickActionMenu: View {
         }
 
         if snapshot.toolboxApps.isEmpty == false {
-            Menu("Toolbox") {
+            Menu("复制并打开Toolbox") {
                 ForEach(toolboxItems) { item in
                     actionButton(for: item)
                 }
@@ -107,6 +111,8 @@ struct TemplateInlineQuickActionMenu: View {
     private var primaryItems: [ActionItem] {
         [
             ActionItem(action: .openDetail(id: snapshot.id), title: "编辑模板", systemImage: "rectangle.and.pencil.and.ellipsis"),
+            ActionItem(action: .copyFilledPrompt(id: snapshot.id), title: "复制", systemImage: "square.and.pencil"),
+            ActionItem(action: .copyTemplateOnly(id: snapshot.id), title: "仅复制模板", systemImage: "doc.on.doc"),
             ActionItem(action: .togglePin(id: snapshot.id), title: snapshot.isPinned ? "取消置顶" : "置顶此模板", systemImage: "pin"),
             ActionItem(action: .rename(id: snapshot.id), title: "更改摘要…", systemImage: "text.badge.star"),
             ActionItem(action: .clone(id: snapshot.id), title: "克隆模板", systemImage: "doc.on.doc"),
