@@ -146,12 +146,19 @@ final class PromptItem {
         self.createdAt = createdAt
         self.updatedAt = updatedAt
         self.kindRawValue = kind.rawValue
-        self.params = params
-        self.revisions = revisions
-        self.attachments = attachments
-        self.params.forEach { $0.owner = self }
-        self.revisions.forEach { $0.prompt = self }
-        self.attachments.forEach { $0.prompt = self }
+        self.params = []
+        self.revisions = []
+        self.attachments = []
+
+        params.forEach { param in
+            param.owner = self
+        }
+        revisions.forEach { revision in
+            revision.prompt = self
+        }
+        attachments.forEach { attachment in
+            attachment.prompt = self
+        }
     }
 
     var kind: Kind {

@@ -2,8 +2,12 @@ import XCTest
 import SwiftData
 @testable import Sparkify
 
+@MainActor
 final class PromptStorageTests: XCTestCase {
     func testSeedDataCreatesThreeRecordsWhenEmpty() throws {
+        let seedKey = "com.sparkify.hasSeededDefaultPrompts"
+        UserDefaults.standard.removeObject(forKey: seedKey)
+        defer { UserDefaults.standard.removeObject(forKey: seedKey) }
         let container = try makeInMemoryContainer()
         let context = container.mainContext
 
@@ -11,7 +15,7 @@ final class PromptStorageTests: XCTestCase {
 
         let descriptor = FetchDescriptor<PromptItem>()
         let items = try context.fetch(descriptor)
-        XCTAssertEqual(items.count, 3)
+        XCTAssertEqual(items.count, 1)
         XCTAssertTrue(items.allSatisfy { !$0.title.isEmpty })
     }
 

@@ -2,6 +2,7 @@ import XCTest
 import SwiftData
 @testable import Sparkify
 
+@MainActor
 final class VersioningServiceTests: XCTestCase {
     func testCaptureRevisionSkipsIdenticalSnapshots() throws {
         let container = try makeInMemoryContainer()

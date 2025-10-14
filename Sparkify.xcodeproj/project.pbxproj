@@ -12,12 +12,18 @@
 
 /* Begin PBXFileReference section */
 		6E25D6C02E9A9DF50002C8D2 /* Sparkify.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Sparkify.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		289814C461444A8FB377851A /* SparkifyTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SparkifyTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		6E25D6C22E9A9DF50002C8D2 /* Sparkify */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = Sparkify;
+			sourceTree = "<group>";
+		};
+		80B699BBEA3C4E94BED034B4 /* SparkifyTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = SparkifyTests;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -31,6 +37,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		0303FFE745C24A3E9881D48D /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -38,6 +51,7 @@
 			isa = PBXGroup;
 			children = (
 				6E25D6C22E9A9DF50002C8D2 /* Sparkify */,
+				80B699BBEA3C4E94BED034B4 /* SparkifyTests */,
 				6E25D6C12E9A9DF50002C8D2 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -46,6 +60,7 @@
 			isa = PBXGroup;
 			children = (
 				6E25D6C02E9A9DF50002C8D2 /* Sparkify.app */,
+				289814C461444A8FB377851A /* SparkifyTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -76,6 +91,27 @@
 			productReference = 6E25D6C02E9A9DF50002C8D2 /* Sparkify.app */;
 			productType = "com.apple.product-type.application";
 		};
+		D2D2373522734190B839C043 /* SparkifyTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = B7EB3AEA95F545A19D5214E2 /* Build configuration list for PBXNativeTarget "SparkifyTests" */;
+			buildPhases = (
+				8B883E00E0A24F769762E034 /* Sources */,
+				0303FFE745C24A3E9881D48D /* Frameworks */,
+				C9664F325F174B10B1B3DAA6 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				AD93114615E446B9AB2BEEB4 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				80B699BBEA3C4E94BED034B4 /* SparkifyTests */,
+			);
+			name = SparkifyTests;
+			productName = SparkifyTests;
+			productReference = 289814C461444A8FB377851A /* SparkifyTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -87,6 +123,9 @@
 				LastUpgradeCheck = 2600;
 				TargetAttributes = {
 					6E25D6BF2E9A9DF50002C8D2 = {
+						CreatedOnToolsVersion = 26.0;
+					};
+					D2D2373522734190B839C043 = {
 						CreatedOnToolsVersion = 26.0;
 					};
 				};
@@ -110,12 +149,20 @@
 			projectRoot = "";
 			targets = (
 				6E25D6BF2E9A9DF50002C8D2 /* Sparkify */,
+				D2D2373522734190B839C043 /* SparkifyTests */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
 		6E25D6BE2E9A9DF50002C8D2 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		C9664F325F174B10B1B3DAA6 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -132,7 +179,32 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		8B883E00E0A24F769762E034 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		AD93114615E446B9AB2BEEB4 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 6E25D6BF2E9A9DF50002C8D2 /* Sparkify */;
+			targetProxy = B833E1CB498341BC98CDD658 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin PBXContainerItemProxy section */
+		B833E1CB498341BC98CDD658 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 6E25D6B82E9A9DF50002C8D2 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 6E25D6BF2E9A9DF50002C8D2;
+			remoteInfo = Sparkify;
+		};
+/* End PBXContainerItemProxy section */
 
 /* Begin XCBuildConfiguration section */
 		6E25D6CB2E9A9DF60002C8D2 /* Debug */ = {
@@ -349,6 +421,56 @@
 			};
 			name = Release;
 		};
+		D195C666CA534E2EB3C9B15A /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = DU5US35N5Y;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleName = "$(PRODUCT_NAME)";
+				INFOPLIST_KEY_LSApplicationCategoryType = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@loader_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 14.6;
+				PRODUCT_BUNDLE_IDENTIFIER = cn.aisolve.byproduct.SparkifyTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Sparkify.app/Contents/MacOS/Sparkify";
+			};
+			name = Debug;
+		};
+		2F00E411510E47ACBA55820B /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = DU5US35N5Y;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleName = "$(PRODUCT_NAME)";
+				INFOPLIST_KEY_LSApplicationCategoryType = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@loader_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 14.6;
+				PRODUCT_BUNDLE_IDENTIFIER = cn.aisolve.byproduct.SparkifyTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_VERSION = 5.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Sparkify.app/Contents/MacOS/Sparkify";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -366,6 +488,15 @@
 			buildConfigurations = (
 				6E25D6CE2E9A9DF60002C8D2 /* Debug */,
 				6E25D6CF2E9A9DF60002C8D2 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		B7EB3AEA95F545A19D5214E2 /* Build configuration list for PBXNativeTarget "SparkifyTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D195C666CA534E2EB3C9B15A /* Debug */,
+				2F00E411510E47ACBA55820B /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

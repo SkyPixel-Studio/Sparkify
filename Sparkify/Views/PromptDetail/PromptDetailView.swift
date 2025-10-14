@@ -538,7 +538,12 @@ struct PromptDetailView: View {
                         .joined(separator: ", ")
                 },
                 set: { newValue in
-                    let rawTags = newValue
+                    // 自动替换全角逗号、分号（全角/半角）为半角逗号
+                    let normalized = newValue
+                        .replacingOccurrences(of: "，", with: ",")  // 全角逗号 → 半角逗号
+                        .replacingOccurrences(of: "；", with: ",")  // 全角分号 → 半角逗号
+                        .replacingOccurrences(of: ";", with: ",")   // 半角分号 → 半角逗号
+                    let rawTags = normalized
                         .split(separator: ",")
                         .map { String($0) }
                     draft.tags = PromptTagPolicy.normalize(rawTags, for: prompt.kind)

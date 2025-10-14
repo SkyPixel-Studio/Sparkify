@@ -1,7 +1,9 @@
+import Foundation
 import XCTest
 import SwiftData
 @testable import Sparkify
 
+@MainActor
 final class PromptTransferServiceTests: XCTestCase {
 
     func testExportAndImportRoundTripPersistsAllFields() throws {
@@ -27,7 +29,10 @@ final class PromptTransferServiceTests: XCTestCase {
         let data = try PromptTransferService.exportData(from: [prompt])
         let payloadString = String(data: data, encoding: .utf8)
         XCTAssertNotNil(payloadString)
-        XCTAssertTrue(payloadString?.contains("\"kind\":\"agentContext\"") == true)
+
+        let jsonObject = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+        let prompts = jsonObject?["prompts"] as? [[String: Any]]
+        XCTAssertEqual(prompts?.first?["kind"] as? String, "agentContext")
 
         let destinationContainer = try makeInMemoryContainer()
         let destinationContext = destinationContainer.mainContext
@@ -41,7 +46,7 @@ final class PromptTransferServiceTests: XCTestCase {
         XCTAssertEqual(fetched?.title, "Greetings")
         XCTAssertEqual(fetched?.body, "Hello {name}")
         XCTAssertEqual(fetched?.pinned, true)
-        XCTAssertEqual(fetched?.tags, ["welcome", "demo"])
+        XCTAssertEqual(fetched?.tags, [PromptTagPolicy.agentContextDisplayTag, "welcome", "demo"])
         XCTAssertEqual(fetched?.params.first?.key, "name")
         XCTAssertEqual(fetched?.params.first?.value, "Leader")
         XCTAssertEqual(fetched?.params.first?.defaultValue, "Leader")
@@ -81,6 +86,7 @@ final class PromptTransferServiceTests: XCTestCase {
             ],
             kind: .standard
         )
+        XCTAssertEqual(updatedPrompt.params.count, 2)
 
         let data = try PromptTransferService.exportData(from: [updatedPrompt])
         let summary = try PromptTransferService.importData(data, into: context)
@@ -93,6 +99,7 @@ final class PromptTransferServiceTests: XCTestCase {
         XCTAssertEqual(fetched?.body, "Hello {name} from {company}")
         XCTAssertEqual(fetched?.pinned, true)
         XCTAssertEqual(fetched?.tags, ["modern", "eng"])
+        XCTAssertEqual(fetched?.params.map(\.key), ["name", "company"])
         XCTAssertEqual(fetched?.params.count, 2)
         let params = fetched?.params ?? []
         XCTAssertEqual(params.first(where: { $0.key == "name" })?.defaultValue, "Leader")

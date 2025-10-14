@@ -118,13 +118,14 @@ struct TemplateGridView: View {
                     Image(systemName: "plus")
                         .font(.system(size: 16, weight: .semibold))
                         .foregroundStyle(Color.black)
-                        .frame(width: 32, height: 32)
+                        .frame(width: 40, height: 40)
+                        .padding(.horizontal, 12)
                         .background(
-                            Circle()
+                            Capsule()
                                 .fill(Color.white)
                         )
                 }
-                .menuStyle(.borderlessButton)
+                .menuStyle(.button)
                 .menuIndicator(.hidden)
             }
         }

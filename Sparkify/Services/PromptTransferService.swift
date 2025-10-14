@@ -38,7 +38,7 @@ struct PromptTransferService {
 
         for payload in package.prompts {
             if let existing = try fetchPrompt(uuid: payload.uuid, in: context) {
-                apply(payload: payload, to: existing)
+                apply(payload: payload, to: existing, in: context)
                 VersioningService.captureRevision(
                     for: existing,
                     in: context,
@@ -69,7 +69,7 @@ struct PromptTransferService {
         return try context.fetch(descriptor).first
     }
 
-    private static func apply(payload: PromptPayload, to prompt: PromptItem) {
+    private static func apply(payload: PromptPayload, to prompt: PromptItem, in context: ModelContext) {
         prompt.title = payload.title
         prompt.body = payload.body
         prompt.pinned = payload.pinned
@@ -77,14 +77,44 @@ struct PromptTransferService {
         prompt.tags = PromptTagPolicy.normalize(payload.tags, for: prompt.kind)
         prompt.createdAt = payload.createdAt
         prompt.updatedAt = payload.updatedAt
-        prompt.params = payload.params.map { param in
-            ParamKV(
-                key: param.key,
-                value: param.value,
-                defaultValue: param.defaultValue,
-                owner: prompt
-            )
+
+        var existingParamsByKey: [String: ParamKV] = [:]
+        var dedupedExisting: [ParamKV] = []
+        for param in prompt.params {
+            if existingParamsByKey[param.key] == nil {
+                existingParamsByKey[param.key] = param
+                dedupedExisting.append(param)
+            } else {
+                context.delete(param)
+            }
         }
+        prompt.params = dedupedExisting
+
+        var updatedParams: [ParamKV] = []
+        updatedParams.reserveCapacity(payload.params.count)
+
+        for paramPayload in payload.params {
+            let param = existingParamsByKey.removeValue(forKey: paramPayload.key) ?? ParamKV(
+                key: paramPayload.key,
+                value: paramPayload.value,
+                defaultValue: paramPayload.defaultValue
+            )
+            param.value = paramPayload.value
+            param.defaultValue = paramPayload.defaultValue
+            if param.owner !== prompt {
+                param.owner = prompt
+            }
+            updatedParams.append(param)
+        }
+
+        for leftover in existingParamsByKey.values {
+            if let index = prompt.params.firstIndex(where: { $0 === leftover }) {
+                prompt.params.remove(at: index)
+            }
+            context.delete(leftover)
+        }
+
+        prompt.params = updatedParams
     }
 
     private static func makePrompt(from payload: PromptPayload) -> PromptItem {
