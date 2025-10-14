@@ -35,7 +35,6 @@ struct TemplateCardView: View {
     }
 
     private enum ParamInputLayoutOverride: Hashable {
-        case auto
         case single
         case multiline
     }
@@ -65,6 +64,7 @@ struct TemplateCardView: View {
     @State private var isEditHovered = false
     @State private var isResetAllHovered = false
     @State private var hoveredResetParamID: PersistentIdentifier?
+    @State private var hoveredLayoutParamID: PersistentIdentifier?
     @State private var isShowingRenameSheet = false
     @State private var draftSummaryTitle = ""
     @State private var paramDrafts: [PersistentIdentifier: String] = [:]
@@ -537,7 +537,8 @@ struct TemplateCardView: View {
                 ForEach(prompt.params, id: \.persistentModelID) { paramModel in
                     let isMissing = isParamMissing(paramModel)
                     let focusTarget = ParamFocusTarget(id: paramModel.persistentModelID)
-                    let useMultiline = shouldUseMultilineInput(paramModel)
+                    let useMultiline = resolvedShouldUseMultiline(for: paramModel)
+                    let isFocused = focusedParam == focusTarget
 
                     Group {
                         if useMultiline {
@@ -566,6 +567,10 @@ struct TemplateCardView: View {
                                         )
 
                                     Spacer()
+                                    
+                                    if isFocused {
+                                        layoutToggleButton(for: paramModel, isMultiline: useMultiline)
+                                    }
 
                                     Button {
                                         paramToReset = paramModel
@@ -608,16 +613,17 @@ struct TemplateCardView: View {
                                 .onAppear {
                                     primeDraft(for: paramModel)
                                     restoreFocusIfNeeded(for: paramModel)
-                                }
-                                .onChange(of: focusedParam == focusTarget) { isFocused in
-                                    if isFocused {
-                                        logParamEvent("focusGained", param: paramModel)
-                                        primeDraft(for: paramModel)
-                                    } else {
-                                        logParamEvent("focusLost", param: paramModel)
-                                        finalizeDraft(for: paramModel)
-                                    }
-                                }
+                }
+                .onChange(of: focusedParam == focusTarget) { isFocused in
+                    if isFocused {
+                        logParamEvent("focusGained", param: paramModel)
+                        primeDraft(for: paramModel)
+                        syncOverrideWithLayout(for: paramModel)
+                    } else {
+                        logParamEvent("focusLost", param: paramModel)
+                        finalizeDraft(for: paramModel)
+                    }
+                }
                                 .onChange(of: paramModel.value) { newValue in
                                     syncDraftWithModelValue(newValue, for: paramModel)
                                 }
@@ -626,6 +632,7 @@ struct TemplateCardView: View {
                                 }
                             }
                             .padding(.horizontal, 4)
+                            .transition(.opacity)
                         } else {
                             // 单行输入：保持原来的横向布局
                             HStack(spacing: 10) {
@@ -664,6 +671,7 @@ struct TemplateCardView: View {
                                 .onChange(of: focusedParam == focusTarget) { isFocused in
                                     if isFocused {
                                         primeDraft(for: paramModel)
+                                        syncOverrideWithLayout(for: paramModel)
                                     } else {
                                         finalizeDraft(for: paramModel)
                                     }
@@ -676,6 +684,10 @@ struct TemplateCardView: View {
                                 }
                                 .onDisappear {
                                     finalizeDraft(for: paramModel)
+                                }
+
+                                if isFocused {
+                                    layoutToggleButton(for: paramModel, isMultiline: useMultiline)
                                 }
 
                                 Button {
@@ -699,8 +711,10 @@ struct TemplateCardView: View {
                                 .animation(interactionAnimation, value: hoveredResetParamID == paramModel.persistentModelID)
                                 .help("重置为默认值")
                             }
+                            .transition(.opacity)
                         }
                     }
+                    .animation(.easeInOut(duration: 0.12), value: useMultiline)
                     .onAppear {
                         restoreFocusIfNeeded(for: paramModel)
                     }
@@ -918,12 +932,98 @@ struct TemplateCardView: View {
         )
     }
 
+    private func resolvedShouldUseMultiline(for param: ParamKV) -> Bool {
+        guard let override = paramLayoutOverrides[param.persistentModelID] else {
+            return shouldUseMultilineInput(param)
+        }
+        return override == .multiline
+    }
+
+    private func cycleLayoutOverride(for param: ParamKV) {
+        let id = param.persistentModelID
+        let current = paramLayoutOverrides[id]
+        let next: ParamInputLayoutOverride?
+        if current == .multiline {
+            next = .single
+        } else {
+            next = .multiline
+        }
+
+        if let override = next {
+            paramLayoutOverrides[id] = override
+        } else {
+            paramLayoutOverrides.removeValue(forKey: id)
+        }
+
+        logParamEvent("layoutOverrideChanged", param: param, extra: "state=\(describeOverride(next))")
+    }
+
+    private func syncOverrideWithLayout(for param: ParamKV) {
+        let id = param.persistentModelID
+        // 如果已经手动覆盖，就保持用户选择
+        guard paramLayoutOverrides[id] == nil else { return }
+        let heuristicMultiline = shouldUseMultilineInput(param)
+        if heuristicMultiline {
+            paramLayoutOverrides[id] = .multiline
+        } else {
+            paramLayoutOverrides.removeValue(forKey: id)
+        }
+        logParamEvent("syncOverrideWithLayout", param: param, extra: "heuristic=\(heuristicMultiline)")
+    }
+
+    private func describeOverride(_ override: ParamInputLayoutOverride?) -> String {
+        switch override {
+        case .none:
+            return "auto"
+        case .some(.single):
+            return "single"
+        case .some(.multiline):
+            return "multiline"
+        }
+    }
+
+    @ViewBuilder
+    private func layoutToggleButton(for param: ParamKV, isMultiline: Bool) -> some View {
+        let id = param.persistentModelID
+        let isHovered = hoveredLayoutParamID == id
+
+        return Button {
+            withAnimation(.easeInOut(duration: 0.14)) {
+                cycleLayoutOverride(for: param)
+            }
+        } label: {
+            Image(systemName: isMultiline ? "rectangle.compress.vertical" : "rectangle.expand.vertical")
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(Color.appForeground.opacity(isHovered ? 0.9 : 0.7))
+                .frame(width: 24, height: 24)
+                .background(
+                    Circle()
+                        .fill(Color.cardSurface.opacity(isHovered ? 1.0 : 0.82))
+                )
+                .overlay(
+                    Circle()
+                        .stroke(Color.cardOutline.opacity(isHovered ? 1.0 : 0.8), lineWidth: 1)
+                )
+        }
+        .buttonStyle(.plain)
+        .onHover { hovering in
+            withAnimation(interactionAnimation) {
+                hoveredLayoutParamID = hovering ? id : nil
+            }
+        }
+        .scaleEffect(isHovered ? 1.08 : 1.0)
+        .animation(interactionAnimation, value: isHovered)
+        .help(isMultiline ? "切换到单行模式" : "切换到多行模式")
+    }
+
     private func draftValue(for param: ParamKV) -> String {
         let id = param.persistentModelID
         if let cached = paramDrafts[id] {
             return cached
         }
-        let initial = param.value
+        // 如果当前值为空但有默认值，就使用默认值初始化
+        let currentValue = param.value.trimmingCharacters(in: .whitespacesAndNewlines)
+        let initial = currentValue.isEmpty ? (param.defaultValue ?? "") : param.value
         paramDrafts[id] = initial
         logParamEvent("draftValue-miss", param: param, extra: "initialize length=\(initial.count)")
         return initial
@@ -939,8 +1039,11 @@ struct TemplateCardView: View {
     private func primeDraft(for param: ParamKV) {
         let id = param.persistentModelID
         if paramDrafts[id] == nil {
-            paramDrafts[id] = param.value
-            logParamEvent("primeDraft", param: param, extra: "length=\(param.value.count)")
+            // 如果当前值为空但有默认值，就使用默认值初始化
+            let currentValue = param.value.trimmingCharacters(in: .whitespacesAndNewlines)
+            let initial = currentValue.isEmpty ? (param.defaultValue ?? "") : param.value
+            paramDrafts[id] = initial
+            logParamEvent("primeDraft", param: param, extra: "length=\(initial.count)")
         }
     }
 
@@ -1027,7 +1130,24 @@ struct TemplateCardView: View {
         persistChange()
     }
 
+    private func finalizeAllParamDrafts(reason: String) {
+        logDebug("finalizeAllParamDrafts(reason=\(reason)) start")
+        let previousFocus = focusedParam
+        focusedParam = nil
+
+        for param in prompt.params {
+            finalizeDraft(for: param)
+        }
+
+        if let previousFocus {
+            logDebug("finalizeAllParamDrafts cleared focus id=\(previousFocus.id)")
+        }
+
+        logDebug("finalizeAllParamDrafts(reason=\(reason)) end")
+    }
+
     private func copyFilledPrompt() {
+        finalizeAllParamDrafts(reason: "copyFilledPrompt")
         let rendered = renderResult.rendered
         let pasteboard = NSPasteboard.general
         pasteboard.clearContents()
@@ -1039,6 +1159,7 @@ struct TemplateCardView: View {
     }
 
     private func copyTemplateOnly() {
+        finalizeAllParamDrafts(reason: "copyTemplateOnly")
         let template = prompt.body
         let pasteboard = NSPasteboard.general
         pasteboard.clearContents()

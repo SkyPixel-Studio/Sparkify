@@ -274,6 +274,11 @@ private struct ToolboxSettingsRow: View {
                 HStack(spacing: 6) {
                     Text(app.displayName)
                         .font(.system(size: 14, weight: .semibold))
+                    
+                    if app.optionKind == .web {
+                        webLinkButton
+                    }
+                    
                     toolboxBadge
                 }
                 Text(app.summary)
@@ -345,6 +350,18 @@ private struct ToolboxSettingsRow: View {
             .foregroundStyle(app.optionKind == .nativeApp ? Color.black : Color.secondary)
     }
 
+    private var webLinkButton: some View {
+        Button {
+            openWebLink()
+        } label: {
+            Image(systemName: "arrow.up.forward.square")
+                .font(.system(size: 11, weight: .medium))
+                .foregroundStyle(Color.accentColor.opacity(0.8))
+        }
+        .buttonStyle(.plain)
+        .help("在浏览器中打开")
+    }
+
     private var moveControls: some View {
         VStack(spacing: 4) {
             moveButton(
@@ -374,6 +391,13 @@ private struct ToolboxSettingsRow: View {
         .buttonStyle(.plain)
         .disabled(disabled)
         .help(systemImage == "chevron.up" ? "上移" : "下移")
+    }
+
+    private func openWebLink() {
+        guard case let .web(url) = app.launchTarget else {
+            return
+        }
+        NSWorkspace.shared.open(url)
     }
 }
 

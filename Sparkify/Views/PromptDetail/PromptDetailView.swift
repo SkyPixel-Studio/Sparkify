@@ -305,6 +305,10 @@ struct PromptDetailView: View {
             Text("参数默认值")
                 .font(.caption)
                 .foregroundStyle(.secondary)
+            Text("这里修改的值只影响模板默认配置，不会立即覆盖主页 Workspace 中的实时参数。")
+                .font(.footnote)
+                .foregroundStyle(.tertiary)
+                .fixedSize(horizontal: false, vertical: true)
 
             if draft.params.isEmpty {
                 Text("正文中的 {placeholder} 会自动同步到这里，方便为每个参数配置默认值。")
@@ -315,34 +319,15 @@ struct PromptDetailView: View {
                 VStack(spacing: 16) {
                     ForEach(Array(draft.params.enumerated()), id: \.element.id) { index, param in
                         VStack(alignment: .leading, spacing: 10) {
-                            HStack {
-                                Text("{\(param.key)}")
-                                    .font(.system(size: 13, weight: .semibold, design: .monospaced))
-                                    .foregroundStyle(Color.appForeground)
-                                Spacer()
-                                Button {
-                                    draft.params[index].value = draft.params[index].defaultValue ?? ""
-                                } label: {
-                                    Label("同步到卡片", systemImage: "arrow.triangle.2.circlepath")
-                                        .font(.caption.weight(.semibold))
-                                }
-                                .buttonStyle(.plain)
-                                .foregroundStyle(.blue)
-                                .disabled(shouldDisableApplyDefault(for: draft.params[index]))
-                                .opacity(shouldDisableApplyDefault(for: draft.params[index]) ? 0.35 : 1)
-                                .help("将默认值直接写入模板卡片的当前参数值")
-                            }
+                            Text("{\(param.key)}")
+                                .font(.system(size: 13, weight: .semibold, design: .monospaced))
+                                .foregroundStyle(Color.appForeground)
 
                             TextField("默认值", text: Binding(
                                 get: { draft.params[index].defaultValue ?? "" },
                                 set: {
                                     let trimmedValue = $0.trimmingCharacters(in: .whitespacesAndNewlines)
-                                    var updated = draft.params[index]
-                                    updated.defaultValue = trimmedValue.isEmpty ? nil : trimmedValue
-                                    if trimmed(updated.value).isEmpty {
-                                        updated.value = updated.defaultValue ?? ""
-                                    }
-                                    draft.params[index] = updated
+                                    draft.params[index].defaultValue = trimmedValue.isEmpty ? nil : trimmedValue
                                 }
                             ), prompt: Text("留空代表默认不填"))
                             .textFieldStyle(.roundedBorder)
@@ -425,28 +410,14 @@ struct PromptDetailView: View {
         }
     }
 
-    private func trimmed(_ value: String) -> String {
-        value.trimmingCharacters(in: .whitespacesAndNewlines)
-    }
-
-    private func shouldDisableApplyDefault(for param: ParamDraft) -> Bool {
-        trimmed(param.defaultValue ?? "").isEmpty
-    }
-
     private func parameterStatusText(for param: ParamDraft) -> String {
-        let effectiveValue = trimmed(param.resolvedValue)
-        let currentValue = trimmed(param.value)
-        let defaultValue = trimmed(param.defaultValue ?? "")
-
-        if effectiveValue.isEmpty {
-            return "此参数默认保持为空，卡片视图会提示补全。"
+        let defaultValue = param.defaultValue?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        
+        if defaultValue.isEmpty {
+            return "未设置默认值，在模板卡片使用时会高亮提示补全。"
         }
-
-        if currentValue.isEmpty, defaultValue.isEmpty == false {
-            return "卡片默认填入：\(param.defaultValue ?? "")"
-        }
-
-        return "当前卡片值：\(param.value)"
+        
+        return "默认值：\(defaultValue)"
     }
 
     private func syncDraftParams() {
@@ -458,7 +429,8 @@ struct PromptDetailView: View {
             if let current = existing.removeValue(forKey: key) {
                 ordered.append(current)
             } else {
-                let created = ParamDraft(key: key, value: "", defaultValue: nil)
+                // 新占位符默认为空默认值，等待用户填写
+                let created = ParamDraft(key: key, defaultValue: nil)
                 ordered.append(created)
             }
         }
@@ -498,12 +470,17 @@ struct PromptDetailView: View {
         var ordered: [ParamKV] = []
 
         for param in draft.params {
+            let normalizedDefault = param.defaultValue
             if let current = existing.removeValue(forKey: param.key) {
-                current.value = param.value
-                current.defaultValue = param.defaultValue
+                current.defaultValue = normalizedDefault
                 ordered.append(current)
             } else {
-                let created = ParamKV(key: param.key, value: param.value, defaultValue: param.defaultValue, owner: prompt)
+                let created = ParamKV(
+                    key: param.key,
+                    value: "",
+                    defaultValue: normalizedDefault,
+                    owner: prompt
+                )
                 ordered.append(created)
             }
         }
@@ -593,18 +570,9 @@ struct PromptDetailView: View {
 
     private struct ParamDraft: Identifiable, Equatable {
         let key: String
-        var value: String
         var defaultValue: String?
 
         var id: String { key }
-
-        var resolvedValue: String {
-            let trimmedValue = value.trimmingCharacters(in: .whitespacesAndNewlines)
-            if trimmedValue.isEmpty {
-                return (defaultValue ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
-            }
-            return value
-        }
     }
 
     private struct PromptDraft: Equatable {
@@ -629,7 +597,9 @@ struct PromptDetailView: View {
             self.body = prompt.body
             self.pinned = prompt.pinned
             self.tags = prompt.tags
-            self.params = prompt.params.map { ParamDraft(key: $0.key, value: $0.value, defaultValue: $0.defaultValue) }
+            self.params = prompt.params.map { param in
+                ParamDraft(key: param.key, defaultValue: param.defaultValue)
+            }
         }
 
         func differs(from prompt: PromptItem) -> Bool {
@@ -644,7 +614,6 @@ struct PromptDetailView: View {
             let lookup = Dictionary(uniqueKeysWithValues: modelParams.map { ($0.key, $0) })
             for draftParam in params {
                 guard let modelParam = lookup[draftParam.key] else { return true }
-                if draftParam.value != modelParam.value { return true }
                 if draftParam.defaultValue != modelParam.defaultValue { return true }
             }
             return false
