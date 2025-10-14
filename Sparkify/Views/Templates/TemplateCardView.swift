@@ -34,6 +34,12 @@ struct TemplateCardView: View {
         let isPinned: Bool
     }
 
+    private enum ParamInputLayoutOverride: Hashable {
+        case auto
+        case single
+        case multiline
+    }
+
     @Environment(\.modelContext) private var modelContext
     @Bindable var prompt: PromptItem
 
@@ -61,6 +67,9 @@ struct TemplateCardView: View {
     @State private var hoveredResetParamID: PersistentIdentifier?
     @State private var isShowingRenameSheet = false
     @State private var draftSummaryTitle = ""
+    @State private var paramDrafts: [PersistentIdentifier: String] = [:]
+    @State private var pendingSaveTasks: [PersistentIdentifier: Task<Void, Never>] = [:]
+    @State private var paramLayoutOverrides: [PersistentIdentifier: ParamInputLayoutOverride] = [:]
 
     private var renderResult: TemplateEngine.RenderResult {
         let values = Dictionary(uniqueKeysWithValues: prompt.params.map { ($0.key, $0.resolvedValue) })
@@ -580,13 +589,7 @@ struct TemplateCardView: View {
                                     .help("重置为默认值")
                                 }
 
-                                TextEditor(text: Binding(
-                                    get: { paramModel.value },
-                                    set: { newValue in
-                                        paramModel.value = newValue
-                                        persistChange()
-                                    }
-                                ))
+                                TextEditor(text: binding(for: paramModel))
                                 .font(.system(size: 13, weight: .regular, design: .monospaced))
                                 .foregroundStyle(Color.appForeground)
                                 .scrollContentBackground(.hidden)
@@ -603,7 +606,23 @@ struct TemplateCardView: View {
                                 .shadow(color: isMissing ? Color.neonYellow.opacity(0.22) : Color.black.opacity(0.04), radius: isMissing ? 6 : 1.2, y: isMissing ? 3 : 1)
                                 .focused($focusedParam, equals: focusTarget)
                                 .onAppear {
+                                    primeDraft(for: paramModel)
                                     restoreFocusIfNeeded(for: paramModel)
+                                }
+                                .onChange(of: focusedParam == focusTarget) { isFocused in
+                                    if isFocused {
+                                        logParamEvent("focusGained", param: paramModel)
+                                        primeDraft(for: paramModel)
+                                    } else {
+                                        logParamEvent("focusLost", param: paramModel)
+                                        finalizeDraft(for: paramModel)
+                                    }
+                                }
+                                .onChange(of: paramModel.value) { newValue in
+                                    syncDraftWithModelValue(newValue, for: paramModel)
+                                }
+                                .onDisappear {
+                                    finalizeDraft(for: paramModel)
                                 }
                             }
                             .padding(.horizontal, 4)
@@ -617,13 +636,12 @@ struct TemplateCardView: View {
                                     .background(RoundedRectangle(cornerRadius: 8).fill(Color.neonYellow.opacity(0.4)))
                                     .foregroundStyle(Color.black)
 
-                                TextField("{\(paramModel.key)}", text: Binding(
-                                    get: { paramModel.value },
-                                    set: { newValue in
-                                        paramModel.value = newValue
-                                        persistChange()
-                                    }
-                                ), prompt: (paramModel.defaultValue ?? "").isEmpty ? nil : Text(paramModel.defaultValue ?? ""), axis: .horizontal)
+                                TextField(
+                                    "{\(paramModel.key)}",
+                                    text: binding(for: paramModel),
+                                    prompt: (paramModel.defaultValue ?? "").isEmpty ? nil : Text(paramModel.defaultValue ?? ""),
+                                    axis: .horizontal
+                                )
                                 .textFieldStyle(.plain)
                                 .padding(.vertical, 6)
                                 .padding(.horizontal, 10)
@@ -640,7 +658,24 @@ struct TemplateCardView: View {
                                 .font(.system(size: 13, weight: .regular, design: .monospaced))
                                 .lineLimit(1)
                                 .onAppear {
+                                    primeDraft(for: paramModel)
                                     restoreFocusIfNeeded(for: paramModel)
+                                }
+                                .onChange(of: focusedParam == focusTarget) { isFocused in
+                                    if isFocused {
+                                        primeDraft(for: paramModel)
+                                    } else {
+                                        finalizeDraft(for: paramModel)
+                                    }
+                                }
+                                .onChange(of: paramModel.value) { newValue in
+                                    syncDraftWithModelValue(newValue, for: paramModel)
+                                }
+                                .onSubmit {
+                                    finalizeDraft(for: paramModel)
+                                }
+                                .onDisappear {
+                                    finalizeDraft(for: paramModel)
                                 }
 
                                 Button {
@@ -859,8 +894,11 @@ struct TemplateCardView: View {
     // 仅保存，不更新时间戳（用于参数值变化、置顶等 UI 状态变化）
     private func persistChange() {
         do {
+            logDebug("persistChange() start")
             try modelContext.save()
+            logDebug("persistChange() success")
         } catch {
+            logDebug("persistChange() failed error=\(error)")
             print("保存模板失败: \(error)")
         }
     }
@@ -868,6 +906,124 @@ struct TemplateCardView: View {
     // 保存并更新时间戳（用于内容编辑：title, body, tags）
     private func persistWithTimestampUpdate() {
         prompt.updateTimestamp()
+        persistChange()
+    }
+
+    private func binding(for param: ParamKV) -> Binding<String> {
+        Binding(
+            get: { draftValue(for: param) },
+            set: { newValue in
+                setDraft(newValue, for: param)
+            }
+        )
+    }
+
+    private func draftValue(for param: ParamKV) -> String {
+        let id = param.persistentModelID
+        if let cached = paramDrafts[id] {
+            return cached
+        }
+        let initial = param.value
+        paramDrafts[id] = initial
+        logParamEvent("draftValue-miss", param: param, extra: "initialize length=\(initial.count)")
+        return initial
+    }
+
+    private func setDraft(_ value: String, for param: ParamKV) {
+        let id = param.persistentModelID
+        paramDrafts[id] = value
+        logParamEvent("setDraft", param: param, extra: "length=\(value.count)")
+        scheduleSave(for: param, value: value)
+    }
+
+    private func primeDraft(for param: ParamKV) {
+        let id = param.persistentModelID
+        if paramDrafts[id] == nil {
+            paramDrafts[id] = param.value
+            logParamEvent("primeDraft", param: param, extra: "length=\(param.value.count)")
+        }
+    }
+
+    private func syncDraftWithModelValue(_ value: String, for param: ParamKV) {
+        let id = param.persistentModelID
+        if paramDrafts[id] != value {
+            logParamEvent("syncDraftWithModelValue", param: param, extra: "length=\(value.count)")
+            paramDrafts[id] = value
+        }
+    }
+
+    private func scheduleSave(for param: ParamKV, value: String) {
+        let id = param.persistentModelID
+        cancelPendingSave(for: id)
+        logParamEvent("scheduleSave", param: param, extra: "delay=0.6 length=\(value.count)")
+
+        let task = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 600_000_000)
+            guard !Task.isCancelled else { return }
+
+            let isFocused = focusedParam?.id == param.persistentModelID
+            if isFocused {
+                logParamEvent("debouncedSaveSkippedPersistFocused", param: param, extra: "length=\(value.count)")
+                pendingSaveTasks[id] = nil
+                return
+            } else {
+                logParamEvent("debouncedSaveFired", param: param, extra: "length=\(value.count)")
+                applyDraft(value, to: param)
+            }
+            pendingSaveTasks[id] = nil
+        }
+
+        pendingSaveTasks[id] = task
+    }
+
+    private func finalizeDraft(for param: ParamKV) {
+        let id = param.persistentModelID
+        logParamEvent("finalizeDraft", param: param)
+        cancelPendingSave(for: id)
+        let currentDraft = paramDrafts[id] ?? param.value
+        applyDraft(currentDraft, to: param)
+    }
+
+    private func applyDraft(_ value: String, to param: ParamKV) {
+        guard param.value != value else { return }
+        logParamEvent(
+            "applyDraft",
+            param: param,
+            extra: "from=\(param.value.count) to=\(value.count)"
+        )
+        param.value = value
+        persistChange(reason: "param:\(param.key)")
+    }
+
+    private func cancelPendingSave(for id: PersistentIdentifier) {
+        if let task = pendingSaveTasks[id] {
+            task.cancel()
+            logDebug("cancelPendingSave id=\(id)")
+            pendingSaveTasks[id] = nil
+        }
+    }
+#if DEBUG
+    private func logParamEvent(_ stage: String, param: ParamKV, extra: String = "") {
+        let timestamp = String(format: "%.6f", Date().timeIntervalSince1970)
+        let identifier = String(describing: param.persistentModelID)
+        if extra.isEmpty {
+            print("[ParamDebug \(timestamp)] [\(param.key)] [\(identifier)] \(stage)")
+        } else {
+            print("[ParamDebug \(timestamp)] [\(param.key)] [\(identifier)] \(stage) :: \(extra)")
+        }
+    }
+
+    private func logDebug(_ message: String) {
+        let timestamp = String(format: "%.6f", Date().timeIntervalSince1970)
+        print("[ParamDebug \(timestamp)] \(message)")
+    }
+#else
+    private func logParamEvent(_ stage: String, param: ParamKV, extra: String = "") {}
+    private func logDebug(_ message: String) {}
+#endif
+
+    private func persistChange(reason: String) {
+        logDebug("persistChange(reason=\(reason)) start")
         persistChange()
     }
 
@@ -915,7 +1071,10 @@ struct TemplateCardView: View {
 
     private func resetParam(_ param: ParamKV) {
         withAnimation {
-            param.value = param.defaultValue ?? ""
+            cancelPendingSave(for: param.persistentModelID)
+            let newValue = param.defaultValue ?? ""
+            param.value = newValue
+            paramDrafts[param.persistentModelID] = newValue
             persistChange()
             paramToReset = nil
         }
@@ -924,7 +1083,10 @@ struct TemplateCardView: View {
     private func resetAllParams() {
         withAnimation {
             for param in prompt.params {
-                param.value = param.defaultValue ?? ""
+                cancelPendingSave(for: param.persistentModelID)
+                let newValue = param.defaultValue ?? ""
+                param.value = newValue
+                paramDrafts[param.persistentModelID] = newValue
             }
             persistChange()
             showResetAllConfirmation = false

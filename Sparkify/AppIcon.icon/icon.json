@@ -1,6 +1,6 @@
 {
   "fill" : {
-    "solid" : "extended-gray:0.92307,1.00000"
+    "automatic-gradient" : "display-p3:1.00000,0.98088,0.22564,1.00000"
   },
   "groups" : [
     {
@@ -17,10 +17,7 @@
         {
           "blend-mode" : "normal",
           "fill" : {
-            "linear-gradient" : [
-              "display-p3:0.86042,0.72387,0.00000,1.00000",
-              "display-p3:1.00000,0.96658,0.00000,1.00000"
-            ]
+            "solid" : "display-p3:1.00000,0.98349,0.98820,1.00000"
           },
           "image-name" : "image.png",
           "name" : "image"
