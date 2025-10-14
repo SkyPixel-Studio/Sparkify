@@ -82,7 +82,7 @@ struct TemplateCardView: View {
     
     /// 判断参数值是否应该使用多行输入框
     private func shouldUseMultilineInput(_ param: ParamKV) -> Bool {
-        let content = param.value.isEmpty ? (param.defaultValue ?? "") : param.value
+        let content = layoutCandidateContent(for: param)
         return content.count > 16 || content.contains("\n")
     }
 
@@ -980,6 +980,15 @@ struct TemplateCardView: View {
         case .some(.multiline):
             return "multiline"
         }
+    }
+    
+    private func layoutCandidateContent(for param: ParamKV) -> String {
+        let id = param.persistentModelID
+        let base = paramDrafts[id] ?? param.value
+        if base.isEmpty {
+            return param.defaultValue ?? ""
+        }
+        return base
     }
 
     @ViewBuilder
