@@ -15,14 +15,24 @@ struct TemplateInlineQuickActionMenu: View {
         let updatedAt: Date
         let tags: [String]
         let toolboxApps: [ToolboxAppLite]
+        let kind: PromptItem.Kind
 
-        init(id: String, isPinned: Bool, createdAt: Date, updatedAt: Date, tags: [String], toolboxApps: [ToolboxAppLite]) {
+        init(
+            id: String,
+            isPinned: Bool,
+            createdAt: Date,
+            updatedAt: Date,
+            tags: [String],
+            toolboxApps: [ToolboxAppLite],
+            kind: PromptItem.Kind
+        ) {
             self.id = id
             self.isPinned = isPinned
             self.createdAt = createdAt
             self.updatedAt = updatedAt
             self.tags = Array(tags)
             self.toolboxApps = toolboxApps
+            self.kind = kind
         }
     }
 
@@ -30,6 +40,8 @@ struct TemplateInlineQuickActionMenu: View {
         case openDetail(id: String)
         case copyFilledPrompt(id: String)
         case copyTemplateOnly(id: String)
+        case overwriteAgentFiles(id: String)
+        case syncAgentFromFile(id: String)
         case togglePin(id: String)
         case rename(id: String)
         case clone(id: String)
@@ -59,6 +71,8 @@ struct TemplateInlineQuickActionMenu: View {
             case let .openDetail(id): return "openDetail-\(id)"
             case let .copyFilledPrompt(id): return "copyFilled-\(id)"
             case let .copyTemplateOnly(id): return "copyTemplate-\(id)"
+            case let .overwriteAgentFiles(id): return "overwriteAgent-\(id)"
+            case let .syncAgentFromFile(id): return "syncAgent-\(id)"
             case let .togglePin(id): return "togglePin-\(id)"
             case let .rename(id): return "rename-\(id)"
             case let .clone(id): return "clone-\(id)"
@@ -109,7 +123,7 @@ struct TemplateInlineQuickActionMenu: View {
     }
 
     private var primaryItems: [ActionItem] {
-        [
+        var actions: [ActionItem] = [
             ActionItem(action: .openDetail(id: snapshot.id), title: "编辑模板", systemImage: "rectangle.and.pencil.and.ellipsis"),
             ActionItem(action: .copyFilledPrompt(id: snapshot.id), title: "复制", systemImage: "square.and.pencil"),
             ActionItem(action: .copyTemplateOnly(id: snapshot.id), title: "仅复制模板", systemImage: "doc.on.doc"),
@@ -119,6 +133,17 @@ struct TemplateInlineQuickActionMenu: View {
             ActionItem(action: .resetAllParams(id: snapshot.id), title: "重置所有参数", systemImage: "arrow.counterclockwise.circle"),
             ActionItem(action: .delete(id: snapshot.id), title: "删除模板", systemImage: "trash", role: .destructive)
         ]
+        if snapshot.kind == .agentContext {
+            actions.insert(
+                ActionItem(action: .overwriteAgentFiles(id: snapshot.id), title: "覆写到文件", systemImage: "square.and.arrow.down"),
+                at: 3
+            )
+            actions.insert(
+                ActionItem(action: .syncAgentFromFile(id: snapshot.id), title: "与文件同步", systemImage: "arrow.down.doc"),
+                at: 4
+            )
+        }
+        return actions
     }
 
     private var tagItems: [ActionItem] {

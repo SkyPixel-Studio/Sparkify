@@ -22,9 +22,51 @@ struct PromptDetailView: View {
     @State private var activePage: DetailPage = .editor
     @State private var selectedBaselineRevisionID: String?
     @State private var selectedComparisonRevisionID: String?
+    @State private var isPushingAgentFiles = false
+    @State private var isPullingAgentFile = false
+    @State private var attachmentToast: OperationToast?
+    @State private var attachmentAlert: AlertItem?
 
     private enum DetailField: Hashable {
         case title, body
+    }
+
+    private func attachmentStatus(for attachment: PromptFileAttachment) -> String {
+        let syncText = formatTimestamp(attachment.lastSyncedAt)
+        let overwriteText = formatTimestamp(attachment.lastOverwrittenAt)
+        return "同步：\(syncText) · 覆写：\(overwriteText)"
+    }
+
+    private func formatTimestamp(_ date: Date?) -> String {
+        guard let date else {
+            return "未执行"
+        }
+        return Self.timestampFormatter.string(from: date)
+    }
+
+    private var isAgentContext: Bool {
+        prompt.kind == .agentContext
+    }
+
+    private var orderedAttachments: [PromptFileAttachment] {
+        prompt.attachments.sorted { lhs, rhs in
+            if lhs.orderHint == rhs.orderHint {
+                return lhs.displayName.localizedCompare(rhs.displayName) == .orderedAscending
+            }
+            return lhs.orderHint < rhs.orderHint
+        }
+    }
+
+    private var hasAgentAttachments: Bool {
+        orderedAttachments.isEmpty == false
+    }
+
+    private var primaryAttachment: PromptFileAttachment? {
+        orderedAttachments.first
+    }
+
+    private var hasAttachmentOperationInFlight: Bool {
+        isPushingAgentFiles || isPullingAgentFile
     }
 
     private enum BodyViewMode: String, CaseIterable {
@@ -96,6 +138,20 @@ struct PromptDetailView: View {
                 Text(message)
             }
         }
+        .alert(item: $attachmentAlert) { alert in
+            Alert(
+                title: Text(alert.title),
+                message: Text(alert.message),
+                dismissButton: .default(Text("好"))
+            )
+        }
+        .overlay(alignment: .top) {
+            if let toast = attachmentToast {
+                OperationToastView(toast: toast)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                    .padding(.top, 18)
+            }
+        }
         .frame(minWidth: 780, minHeight: 560)
     }
 
@@ -154,6 +210,10 @@ struct PromptDetailView: View {
                 VStack(alignment: .leading, spacing: 24) {
                     header
                     divider
+                    if isAgentContext {
+                        attachmentsSection
+                        divider
+                    }
                     bodyEditor
                     divider
                     parameterDefaultsEditor
@@ -181,6 +241,222 @@ struct PromptDetailView: View {
             onClose: {
                 dismiss()
             }
+        )
+    }
+
+    @ViewBuilder
+    private var attachmentsSection: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(spacing: 12) {
+                Text("关联文件")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Spacer()
+                Button {
+                    addAgentContextFiles()
+                } label: {
+                    Label("添加文件…", systemImage: "plus")
+                        .font(.system(size: 12, weight: .semibold))
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(
+                            Capsule()
+                                .fill(Color.cardSurface.opacity(0.85))
+                        )
+                        .overlay(
+                            Capsule()
+                                .stroke(Color.cardOutline.opacity(0.6), lineWidth: 1)
+                        )
+                }
+                .buttonStyle(.plain)
+            }
+
+            if orderedAttachments.isEmpty {
+                Text("尚未关联文件。点击“添加文件…”选择一个或多个 Markdown 文件，支持按 ⌘⇧. 显示隐藏文件。")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            } else {
+                VStack(spacing: 12) {
+                    ForEach(orderedAttachments, id: \.persistentModelID) { attachment in
+                        attachmentRow(for: attachment)
+                    }
+                }
+                .transition(.opacity)
+
+                agentAttachmentActionBar
+            }
+        }
+    }
+
+    private var agentAttachmentActionBar: some View {
+        HStack(spacing: 12) {
+            Button {
+                pushAgentBodyToFiles()
+            } label: {
+                HStack(spacing: 8) {
+                    if isPushingAgentFiles {
+                        ProgressView()
+                            .progressViewStyle(.circular)
+                            .scaleEffect(0.65)
+                            .tint(Color.black.opacity(0.85))
+                    } else {
+                        Image(systemName: "square.and.arrow.down")
+                            .font(.system(size: 13, weight: .semibold))
+                    }
+                    Text("覆写到文件")
+                        .font(.system(size: 13, weight: .semibold))
+                }
+                .padding(.horizontal, 18)
+                .padding(.vertical, 8)
+                .background(
+                    Capsule()
+                        .fill(hasAgentAttachments ? Color.neonYellow : Color.cardSurface.opacity(0.6))
+                )
+                .foregroundStyle(hasAgentAttachments ? Color.black : Color.secondary)
+            }
+            .buttonStyle(.plain)
+            .disabled(hasAgentAttachments == false || hasAttachmentOperationInFlight)
+
+            Button {
+                syncAgentBodyFromFile()
+            } label: {
+                HStack(spacing: 8) {
+                    if isPullingAgentFile {
+                        ProgressView()
+                            .progressViewStyle(.circular)
+                            .scaleEffect(0.65)
+                            .tint(Color.appForeground)
+                    } else {
+                        Image(systemName: "arrow.down.doc")
+                            .font(.system(size: 13, weight: .semibold))
+                    }
+                    Text("与文件同步")
+                        .font(.system(size: 13, weight: .semibold))
+                }
+                .padding(.horizontal, 18)
+                .padding(.vertical, 8)
+                .background(
+                    Capsule()
+                        .fill(Color.cardSurface.opacity(hasAgentAttachments ? 0.9 : 0.5))
+                )
+                .foregroundStyle(hasAgentAttachments ? Color.appForeground.opacity(0.88) : Color.secondary)
+                .overlay(
+                    Capsule()
+                        .stroke(Color.cardOutline.opacity(0.6), lineWidth: 1)
+                )
+            }
+            .buttonStyle(.plain)
+            .disabled(hasAgentAttachments == false || hasAttachmentOperationInFlight)
+        }
+    }
+
+    @ViewBuilder
+    private func attachmentRow(for attachment: PromptFileAttachment) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .center, spacing: 12) {
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(spacing: 8) {
+                        Text(attachment.displayName)
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundStyle(Color.appForeground)
+                        if attachment.persistentModelID == primaryAttachment?.persistentModelID {
+                            Text("主文件")
+                                .font(.caption2.weight(.bold))
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 3)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 6, style: .continuous)
+                                        .fill(Color.neonYellow.opacity(0.4))
+                                )
+                                .foregroundStyle(Color.black)
+                        }
+                    }
+                    Text(attachmentStatus(for: attachment))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer()
+
+                HStack(spacing: 8) {
+                    Button {
+                        moveAttachment(attachment, direction: -1)
+                    } label: {
+                        Image(systemName: "chevron.up")
+                            .font(.system(size: 11, weight: .bold))
+                            .frame(width: 24, height: 24)
+                            .background(
+                                Circle()
+                                    .fill(Color.cardSurface.opacity(0.85))
+                            )
+                            .foregroundStyle(Color.appForeground.opacity(0.85))
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(orderedAttachments.first?.persistentModelID == attachment.persistentModelID || hasAttachmentOperationInFlight)
+
+                    Button {
+                        moveAttachment(attachment, direction: 1)
+                    } label: {
+                        Image(systemName: "chevron.down")
+                            .font(.system(size: 11, weight: .bold))
+                            .frame(width: 24, height: 24)
+                            .background(
+                                Circle()
+                                    .fill(Color.cardSurface.opacity(0.85))
+                            )
+                            .foregroundStyle(Color.appForeground.opacity(0.85))
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(orderedAttachments.last?.persistentModelID == attachment.persistentModelID || hasAttachmentOperationInFlight)
+
+                    Menu {
+                        Button("设为首要") {
+                            makeAttachmentPrimary(attachment)
+                        }
+                        .disabled(primaryAttachment?.persistentModelID == attachment.persistentModelID || hasAttachmentOperationInFlight)
+
+                        Divider()
+
+                        Button("仅从该文件同步") {
+                            syncFromAttachment(attachment)
+                        }
+                        .disabled(hasAttachmentOperationInFlight)
+
+                        Button("仅覆写该文件") {
+                            overwriteSingleAttachment(attachment)
+                        }
+                        .disabled(hasAttachmentOperationInFlight)
+
+                        Divider()
+
+                        Button("移除附件", role: .destructive) {
+                            removeAttachment(attachment)
+                        }
+                    } label: {
+                        Image(systemName: "ellipsis.circle")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundStyle(Color.appForeground.opacity(0.85))
+                    }
+                    .menuStyle(.borderlessButton)
+                }
+            }
+
+            if let error = attachment.lastErrorMessage,
+               error.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false {
+                Text(error)
+                    .font(.caption2)
+                    .foregroundStyle(Color.red)
+            }
+        }
+        .padding(14)
+        .background(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(Color.cardSurface)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .stroke(Color.cardOutline.opacity(0.6), lineWidth: 1)
         )
     }
 
@@ -256,12 +532,16 @@ struct PromptDetailView: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
             TextField("", text: Binding(
-                get: { draft.tags.joined(separator: ", ") },
+                get: {
+                    PromptTagPolicy
+                        .removingReservedTags(from: draft.tags)
+                        .joined(separator: ", ")
+                },
                 set: { newValue in
-                    draft.tags = newValue
+                    let rawTags = newValue
                         .split(separator: ",")
-                        .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-                        .filter { $0.isEmpty == false }
+                        .map { String($0) }
+                    draft.tags = PromptTagPolicy.normalize(rawTags, for: prompt.kind)
                 }
             ))
             .textFieldStyle(.roundedBorder)
@@ -464,7 +744,7 @@ struct PromptDetailView: View {
         prompt.title = draft.title
         prompt.body = draft.body
         prompt.pinned = draft.pinned
-        prompt.tags = draft.tags
+        prompt.tags = PromptTagPolicy.normalize(draft.tags, for: prompt.kind)
 
         var existing = Dictionary(uniqueKeysWithValues: prompt.params.map { ($0.key, $0) })
         var ordered: [ParamKV] = []
@@ -596,7 +876,7 @@ struct PromptDetailView: View {
             self.title = prompt.title
             self.body = prompt.body
             self.pinned = prompt.pinned
-            self.tags = prompt.tags
+            self.tags = PromptTagPolicy.normalize(prompt.tags, for: prompt.kind)
             self.params = prompt.params.map { param in
                 ParamDraft(key: param.key, defaultValue: param.defaultValue)
             }
@@ -631,6 +911,231 @@ struct PromptDetailView: View {
         }
     }
     
+    private func addAgentContextFiles() {
+        Task { @MainActor in
+            do {
+                let urls = try AgentContextFileService.shared.chooseMarkdownFiles()
+                guard urls.isEmpty == false else { return }
+                try AgentContextFileService.shared.appendAttachments(urls, to: prompt)
+                normalizeAttachmentOrder()
+                saveContextAfterAttachmentChange(reason: "agentContext-add")
+                showAttachmentToast(message: "已关联 \(urls.count) 个文件", icon: "paperclip")
+            } catch AgentContextFileService.SelectionError.userCancelled {
+                // 用户取消，无需处理
+            } catch {
+                attachmentAlert = AlertItem(
+                    title: "添加失败",
+                    message: error.localizedDescription
+                )
+            }
+        }
+    }
+
+    private func pushAgentBodyToFiles() {
+        guard hasAgentAttachments else {
+            attachmentAlert = AlertItem(
+                title: "没有可覆写的文件",
+                message: "请先添加需要同步的 Markdown 文件。"
+            )
+            return
+        }
+        guard hasAttachmentOperationInFlight == false else { return }
+        guard commitDraftForAgentOperation() else { return }
+
+        isPushingAgentFiles = true
+        Task { @MainActor in
+            defer { isPushingAgentFiles = false }
+            let results = AgentContextFileService.shared.overwrite(prompt.body, to: orderedAttachments)
+            saveContextAfterAttachmentChange(reason: "agentContext-pushAll")
+
+            let successCount = results.filter(\.isSuccess).count
+            if successCount > 0 {
+                showAttachmentToast(message: "已覆写 \(successCount) 个文件", icon: "square.and.arrow.down")
+            }
+
+            if let failure = results.first(where: { $0.isSuccess == false }),
+               let error = failure.error {
+                attachmentAlert = AlertItem(
+                    title: "覆写失败",
+                    message: error.localizedDescription
+                )
+            }
+        }
+    }
+
+    private func syncAgentBodyFromFile() {
+        guard let attachment = primaryAttachment else {
+            attachmentAlert = AlertItem(
+                title: "无法同步",
+                message: "请先在附件列表中添加并排序至少一个文件。"
+            )
+            return
+        }
+        guard hasAttachmentOperationInFlight == false else { return }
+
+        isPullingAgentFile = true
+        Task { @MainActor in
+            defer { isPullingAgentFile = false }
+            let result = AgentContextFileService.shared.pullContent(from: attachment)
+            if let error = result.error {
+                saveContextAfterAttachmentChange(reason: "agentContext-syncPrimary-error")
+                attachmentAlert = AlertItem(
+                    title: "同步失败",
+                    message: error.localizedDescription
+                )
+                return
+            }
+
+            let newBody = result.content ?? ""
+            draft.body = newBody
+            syncDraftParams()
+            if commitDraftForAgentOperation() {
+                showAttachmentToast(message: "已从「\(attachment.displayName)」同步", icon: "arrow.down.doc")
+            }
+        }
+    }
+
+    private func overwriteSingleAttachment(_ attachment: PromptFileAttachment) {
+        guard hasAttachmentOperationInFlight == false else { return }
+        guard commitDraftForAgentOperation() else { return }
+
+        isPushingAgentFiles = true
+        Task { @MainActor in
+            defer { isPushingAgentFiles = false }
+            let result = AgentContextFileService.shared.overwrite(prompt.body, to: [attachment]).first
+            saveContextAfterAttachmentChange(reason: "agentContext-pushSingle")
+
+            if let result, result.isSuccess {
+                showAttachmentToast(message: "已覆写「\(attachment.displayName)」", icon: "square.and.arrow.down")
+            } else if let error = result?.error {
+                attachmentAlert = AlertItem(
+                    title: "\(attachment.displayName) 覆写失败",
+                    message: error.localizedDescription
+                )
+            }
+        }
+    }
+
+    private func syncFromAttachment(_ attachment: PromptFileAttachment) {
+        guard hasAttachmentOperationInFlight == false else { return }
+
+        isPullingAgentFile = true
+        Task { @MainActor in
+            defer { isPullingAgentFile = false }
+            let result = AgentContextFileService.shared.pullContent(from: attachment)
+            if let error = result.error {
+                saveContextAfterAttachmentChange(reason: "agentContext-syncSingle-error")
+                attachmentAlert = AlertItem(
+                    title: "\(attachment.displayName) 同步失败",
+                    message: error.localizedDescription
+                )
+                return
+            }
+
+            let newBody = result.content ?? ""
+            draft.body = newBody
+            syncDraftParams()
+            if commitDraftForAgentOperation() {
+                showAttachmentToast(message: "已从「\(attachment.displayName)」同步", icon: "arrow.down.doc")
+            }
+        }
+    }
+
+    private func moveAttachment(_ attachment: PromptFileAttachment, direction: Int) {
+        guard let currentIndex = orderedAttachments.firstIndex(where: { $0.persistentModelID == attachment.persistentModelID }) else {
+            return
+        }
+        let targetIndex = currentIndex + direction
+        var reordered = orderedAttachments
+        guard reordered.indices.contains(targetIndex) else { return }
+        reordered.swapAt(currentIndex, targetIndex)
+        for (index, item) in reordered.enumerated() {
+            item.orderHint = index
+        }
+        prompt.attachments = reordered
+        saveContextAfterAttachmentChange(reason: "agentContext-move")
+    }
+
+    private func makeAttachmentPrimary(_ attachment: PromptFileAttachment) {
+        guard primaryAttachment?.persistentModelID != attachment.persistentModelID else { return }
+        var reordered = orderedAttachments.filter { $0.persistentModelID != attachment.persistentModelID }
+        reordered.insert(attachment, at: 0)
+        for (index, item) in reordered.enumerated() {
+            item.orderHint = index
+        }
+        prompt.attachments = reordered
+        saveContextAfterAttachmentChange(reason: "agentContext-primary")
+    }
+
+    private func removeAttachment(_ attachment: PromptFileAttachment) {
+        modelContext.delete(attachment)
+        prompt.attachments.removeAll { $0.persistentModelID == attachment.persistentModelID }
+        normalizeAttachmentOrder()
+        saveContextAfterAttachmentChange(reason: "agentContext-remove")
+        showAttachmentToast(message: "已移除「\(attachment.displayName)」", icon: "trash")
+    }
+
+    private func normalizeAttachmentOrder() {
+        let normalized = orderedAttachments.enumerated().map { index, item -> PromptFileAttachment in
+            item.orderHint = index
+            return item
+        }
+        prompt.attachments = normalized
+    }
+
+    @discardableResult
+    private func commitDraftForAgentOperation(updateTimestamp: Bool = true) -> Bool {
+        syncDraftParams()
+        applyDraftToPrompt()
+        if updateTimestamp {
+            prompt.updateTimestamp()
+        }
+        do {
+            try modelContext.save()
+            draft = PromptDraft(from: prompt)
+            return true
+        } catch {
+            attachmentAlert = AlertItem(
+                title: "保存失败",
+                message: error.localizedDescription
+            )
+            return false
+        }
+    }
+
+    private func saveContextAfterAttachmentChange(reason _: String) {
+        do {
+            try modelContext.save()
+        } catch {
+            attachmentAlert = AlertItem(
+                title: "保存失败",
+                message: error.localizedDescription
+            )
+        }
+    }
+
+    private func showAttachmentToast(message: String, icon: String) {
+        let toast = OperationToast(message: message, iconSystemName: icon)
+        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+            attachmentToast = toast
+        }
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 1_600_000_000)
+            if attachmentToast?.id == toast.id {
+                withAnimation(.easeInOut(duration: 0.25)) {
+                    attachmentToast = nil
+                }
+            }
+        }
+    }
+
+    private static let timestampFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .short
+        formatter.timeStyle = .short
+        return formatter
+    }()
+
     private var recentTags: [String] {
         var tagFrequency: [String: (count: Int, lastUsed: Date)] = [:]
         
@@ -638,6 +1143,9 @@ struct PromptDetailView: View {
             for tag in promptItem.tags {
                 let trimmedTag = tag.trimmingCharacters(in: .whitespacesAndNewlines)
                 guard trimmedTag.isEmpty == false else { continue }
+                if PromptTagPolicy.isReservedTag(trimmedTag) {
+                    continue
+                }
                 
                 if let existing = tagFrequency[trimmedTag] {
                     tagFrequency[trimmedTag] = (
@@ -663,9 +1171,13 @@ struct PromptDetailView: View {
     
     private func addTagIfNeeded(_ tag: String) {
         let trimmedTag = tag.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard trimmedTag.isEmpty == false, draft.tags.contains(trimmedTag) == false else { return }
+        guard trimmedTag.isEmpty == false else { return }
+        if PromptTagPolicy.isReservedTag(trimmedTag), prompt.kind != .agentContext {
+            return
+        }
+        guard draft.tags.contains(trimmedTag) == false else { return }
         withAnimation(.easeInOut(duration: 0.2)) {
-            draft.tags.append(trimmedTag)
+            draft.tags = PromptTagPolicy.normalize(draft.tags + [trimmedTag], for: prompt.kind)
         }
     }
 }

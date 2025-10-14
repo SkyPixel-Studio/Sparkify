@@ -29,7 +29,12 @@ final class PromptStorageTests: XCTestCase {
     }
 
     private func makeInMemoryContainer() throws -> ModelContainer {
-        let schema = Schema([PromptItem.self, ParamKV.self, PromptRevision.self])
+        let schema = Schema([
+            PromptItem.self,
+            ParamKV.self,
+            PromptRevision.self,
+            PromptFileAttachment.self
+        ])
         let configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
         return try ModelContainer(for: schema, configurations: [configuration])
     }

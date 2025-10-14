@@ -18,12 +18,16 @@ final class PromptTransferServiceTests: XCTestCase {
             updatedAt: Date(timeIntervalSince1970: 2_000),
             params: [
                 ParamKV(key: "name", value: "Leader")
-            ]
+            ],
+            kind: .agentContext
         )
         sourceContext.insert(prompt)
         try sourceContext.save()
 
         let data = try PromptTransferService.exportData(from: [prompt])
+        let payloadString = String(data: data, encoding: .utf8)
+        XCTAssertNotNil(payloadString)
+        XCTAssertTrue(payloadString?.contains("\"kind\":\"agentContext\"") == true)
 
         let destinationContainer = try makeInMemoryContainer()
         let destinationContext = destinationContainer.mainContext
@@ -43,6 +47,7 @@ final class PromptTransferServiceTests: XCTestCase {
         XCTAssertEqual(fetched?.params.first?.defaultValue, "Leader")
         XCTAssertEqual(fetched?.createdAt, Date(timeIntervalSince1970: 1_000))
         XCTAssertEqual(fetched?.updatedAt, Date(timeIntervalSince1970: 2_000))
+        XCTAssertEqual(fetched?.kind, .agentContext)
     }
 
     func testImportMergesByUUID() throws {
@@ -73,7 +78,8 @@ final class PromptTransferServiceTests: XCTestCase {
             params: [
                 ParamKV(key: "name", value: "Leader"),
                 ParamKV(key: "company", value: "Apple Pie Logistics")
-            ]
+            ],
+            kind: .standard
         )
 
         let data = try PromptTransferService.exportData(from: [updatedPrompt])
@@ -91,6 +97,41 @@ final class PromptTransferServiceTests: XCTestCase {
         let params = fetched?.params ?? []
         XCTAssertEqual(params.first(where: { $0.key == "name" })?.defaultValue, "Leader")
         XCTAssertEqual(params.first(where: { $0.key == "company" })?.defaultValue, "Apple Pie Logistics")
+        XCTAssertEqual(fetched?.kind, .standard)
+
+        // Ensure existing attachments stay untouched when kind remains standard
+        XCTAssertEqual(fetched?.attachments.count, 0)
+    }
+
+    func testImportDefaultsKindWhenMissing() throws {
+        let legacyJSON = """
+        {
+            "version": 1,
+            "exportedAt": "2024-01-01T00:00:00Z",
+            "prompts": [
+                {
+                    "uuid": "legacy-1",
+                    "title": "Legacy",
+                    "body": "",
+                    "pinned": false,
+                    "tags": [],
+                    "createdAt": "2024-01-01T00:00:00Z",
+                    "updatedAt": "2024-01-01T00:00:00Z",
+                    "params": []
+                }
+            ]
+        }
+        """.data(using: .utf8)!
+
+        let container = try makeInMemoryContainer()
+        let context = container.mainContext
+
+        let summary = try PromptTransferService.importData(legacyJSON, into: context)
+        XCTAssertEqual(summary.inserted, 1)
+
+        let fetched = try context.fetch(FetchDescriptor<PromptItem>()).first
+        XCTAssertEqual(fetched?.uuid, "legacy-1")
+        XCTAssertEqual(fetched?.kind, .standard)
     }
 
     func testImportRejectsUnsupportedVersion() throws {
@@ -114,7 +155,12 @@ final class PromptTransferServiceTests: XCTestCase {
     // MARK: - Helpers
 
     private func makeInMemoryContainer() throws -> ModelContainer {
-        let schema = Schema([PromptItem.self, ParamKV.self, PromptRevision.self])
+        let schema = Schema([
+            PromptItem.self,
+            ParamKV.self,
+            PromptRevision.self,
+            PromptFileAttachment.self
+        ])
         let configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
         return try ModelContainer(for: schema, configurations: [configuration])
     }

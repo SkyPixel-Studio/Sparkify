@@ -17,7 +17,7 @@
             endingColumnNumber = "9223372036854775807"
             startingLineNumber = "212"
             endingLineNumber = "212"
-            landmarkName = "contextMenuConfiguration"
+            landmarkName = "agentFileActionColumn"
             landmarkType = "24">
          </BreakpointContent>
       </BreakpointProxy>
@@ -33,7 +33,7 @@
             endingColumnNumber = "9223372036854775807"
             startingLineNumber = "684"
             endingLineNumber = "684"
-            landmarkName = "parameterFields"
+            landmarkName = "header"
             landmarkType = "24">
          </BreakpointContent>
       </BreakpointProxy>
@@ -49,7 +49,7 @@
             endingColumnNumber = "9223372036854775807"
             startingLineNumber = "207"
             endingLineNumber = "207"
-            landmarkName = "contextMenuConfiguration"
+            landmarkName = "agentFileActionColumn"
             landmarkType = "24">
          </BreakpointContent>
       </BreakpointProxy>
@@ -65,7 +65,7 @@
             endingColumnNumber = "9223372036854775807"
             startingLineNumber = "208"
             endingLineNumber = "208"
-            landmarkName = "contextMenuConfiguration"
+            landmarkName = "agentFileActionColumn"
             landmarkType = "24">
          </BreakpointContent>
       </BreakpointProxy>
@@ -81,7 +81,7 @@
             endingColumnNumber = "9223372036854775807"
             startingLineNumber = "218"
             endingLineNumber = "218"
-            landmarkName = "contextMenuConfiguration"
+            landmarkName = "agentFileActionColumn"
             landmarkType = "24">
          </BreakpointContent>
       </BreakpointProxy>
@@ -97,7 +97,7 @@
             endingColumnNumber = "9223372036854775807"
             startingLineNumber = "219"
             endingLineNumber = "219"
-            landmarkName = "contextMenuConfiguration"
+            landmarkName = "agentFileActionColumn"
             landmarkType = "24">
          </BreakpointContent>
       </BreakpointProxy>

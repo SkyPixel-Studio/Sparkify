@@ -97,17 +97,33 @@ final class ParamKV {
 
 @Model
 final class PromptItem {
+    enum Kind: String, Codable, CaseIterable {
+        case standard
+        case agentContext
+    }
+
     @Attribute(.unique) var uuid: String
     var title: String
     var body: String
     var pinned: Bool
-    var tags: [String]
+    var tags: [String] {
+        didSet {
+            let normalized = PromptTagPolicy.normalize(tags, for: kind)
+            if normalized != tags {
+                tags = normalized
+            }
+        }
+    }
     var createdAt: Date
     var updatedAt: Date
+    @Attribute(originalName: "kind")
+    private var kindRawValue: String?
     @Relationship(deleteRule: .cascade)
     var params: [ParamKV]
     @Relationship(deleteRule: .cascade)
     var revisions: [PromptRevision]
+    @Relationship(deleteRule: .cascade)
+    var attachments: [PromptFileAttachment]
 
     init(
         uuid: String = UUID().uuidString,
@@ -118,22 +134,90 @@ final class PromptItem {
         createdAt: Date = Date(),
         updatedAt: Date = Date(),
         params: [ParamKV] = [],
-        revisions: [PromptRevision] = []
+        revisions: [PromptRevision] = [],
+        attachments: [PromptFileAttachment] = [],
+        kind: Kind = .standard
     ) {
         self.uuid = uuid
         self.title = title
         self.body = body
         self.pinned = pinned
-        self.tags = tags
+        self.tags = PromptTagPolicy.normalize(tags, for: kind)
         self.createdAt = createdAt
         self.updatedAt = updatedAt
+        self.kindRawValue = kind.rawValue
         self.params = params
         self.revisions = revisions
+        self.attachments = attachments
         self.params.forEach { $0.owner = self }
         self.revisions.forEach { $0.prompt = self }
+        self.attachments.forEach { $0.prompt = self }
+    }
+
+    var kind: Kind {
+        get {
+            if let rawValue = kindRawValue, let stored = Kind(rawValue: rawValue) {
+                return stored
+            }
+            return .standard
+        }
+        set {
+            kindRawValue = newValue.rawValue
+            tags = PromptTagPolicy.normalize(tags, for: newValue)
+        }
     }
 
     func updateTimestamp() {
         updatedAt = Date()
+    }
+}
+
+@Model
+final class PromptFileAttachment {
+    @Attribute(.unique) var uuid: String
+    var displayName: String
+    var bookmarkData: Data
+    var orderHint: Int
+    var lastSyncedAt: Date?
+    var lastOverwrittenAt: Date?
+    var lastErrorMessage: String?
+    @Relationship(inverse: \PromptItem.attachments)
+    var prompt: PromptItem?
+
+    init(
+        uuid: String = UUID().uuidString,
+        displayName: String,
+        bookmarkData: Data,
+        orderHint: Int,
+        lastSyncedAt: Date? = nil,
+        lastOverwrittenAt: Date? = nil,
+        lastErrorMessage: String? = nil,
+        prompt: PromptItem? = nil
+    ) {
+        self.uuid = uuid
+        self.displayName = displayName
+        self.bookmarkData = bookmarkData
+        self.orderHint = orderHint
+        self.lastSyncedAt = lastSyncedAt
+        self.lastOverwrittenAt = lastOverwrittenAt
+        self.lastErrorMessage = lastErrorMessage
+        self.prompt = prompt
+    }
+
+    var url: URL? {
+        var isStale = false
+        do {
+            let url = try URL(
+                resolvingBookmarkData: bookmarkData,
+                options: [.withSecurityScope],
+                bookmarkDataIsStale: &isStale
+            )
+            if isStale {
+                return nil
+            }
+            return url
+        } catch {
+            return nil
+        }
     }
 }

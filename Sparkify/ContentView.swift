@@ -73,8 +73,15 @@ struct ContentView: View {
                 onExport: { prepareExport() },
                 searchText: $searchText,
                 onAddPrompt: addPrompt,
+                onAddAgentContextPrompt: addAgentContextPrompt,
                 onDeletePrompt: deletePrompt(_:),
-                onClonePrompt: clonePrompt(_:)
+                onClonePrompt: clonePrompt(_:),
+                onShowToast: { message, icon in
+                    showToast(message: message, icon: icon)
+                },
+                onPresentError: { title, message in
+                    presentAlert(title: title, message: message)
+                }
             )
         }
         .navigationSplitViewStyle(.balanced)
@@ -162,6 +169,64 @@ struct ContentView: View {
         }
     }
 
+    private func addAgentContextPrompt() {
+        Task { @MainActor in
+            do {
+                let urls = try AgentContextFileService.shared.chooseMarkdownFiles()
+                let attachments = try AgentContextFileService.shared.makeAttachments(from: urls)
+                guard let primaryAttachment = attachments.first else {
+                    presentAlert(
+                        title: "无法创建模板",
+                        message: "未检测到有效的 Markdown 文件，请重新选择。"
+                    )
+                    return
+                }
+
+                let pullResult = AgentContextFileService.shared.pullContent(from: primaryAttachment)
+                if let error = pullResult.error {
+                    presentAlert(
+                        title: "导入失败",
+                        message: error.localizedDescription
+                    )
+                    return
+                }
+
+                let initialBody = pullResult.content ?? ""
+                var initialTags: [String] = []
+                if case let .tag(tagName) = activeFilter {
+                    initialTags = [tagName]
+                }
+
+                let suggestedTitle = urls.first?.deletingPathExtension().lastPathComponent ?? primaryAttachment.displayName
+                let newPrompt = PromptItem(
+                    title: suggestedTitle.isEmpty ? "代理上下文模板" : suggestedTitle,
+                    body: initialBody,
+                    tags: initialTags,
+                    attachments: attachments,
+                    kind: .agentContext
+                )
+                modelContext.insert(newPrompt)
+                presentedPrompt = newPrompt
+                do {
+                    try modelContext.save()
+                    showToast(message: "已创建代理上下文模板", icon: "doc.badge.plus")
+                } catch {
+                    presentAlert(
+                        title: "保存失败",
+                        message: error.localizedDescription
+                    )
+                }
+            } catch AgentContextFileService.SelectionError.userCancelled {
+                // 用户取消选择，忽略
+            } catch {
+                presentAlert(
+                    title: "无法创建模板",
+                    message: error.localizedDescription
+                )
+            }
+        }
+    }
+
     private func deletePrompt(_ prompt: PromptItem) {
         let displayName = prompt.title.isEmpty ? "未命名模板" : prompt.title
         if presentedPrompt?.persistentModelID == prompt.persistentModelID {
@@ -203,7 +268,9 @@ struct ContentView: View {
             title: clonedTitle,
             body: prompt.body,
             tags: prompt.tags,
-            params: paramsCopy
+            params: paramsCopy,
+            attachments: [],
+            kind: prompt.kind
         )
 
         modelContext.insert(clonedPrompt)
@@ -343,6 +410,10 @@ struct ContentView: View {
         }
     }
 
+    private func presentAlert(title: String, message: String) {
+        alertItem = AlertItem(title: title, message: message)
+    }
+
     private func synchronizeParams(for prompt: PromptItem) {
         let keys = TemplateEngine.placeholders(in: prompt.body)
         var existing = Dictionary(uniqueKeysWithValues: prompt.params.map { ($0.key, $0) })
@@ -362,7 +433,12 @@ struct ContentView: View {
 
 #Preview {
     let container: ModelContainer = {
-        let schema = Schema([PromptItem.self, ParamKV.self])
+        let schema = Schema([
+            PromptItem.self,
+            ParamKV.self,
+            PromptRevision.self,
+            PromptFileAttachment.self
+        ])
         let configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
         let container = try! ModelContainer(for: schema, configurations: [configuration])
         try? SeedDataLoader.ensureSeedData(using: container.mainContext)

@@ -15,7 +15,9 @@ struct SparkifyApp: App {
     init() {
         let schema = Schema([
             PromptItem.self,
-            ParamKV.self
+            ParamKV.self,
+            PromptRevision.self,
+            PromptFileAttachment.self
         ])
         let configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
         do {

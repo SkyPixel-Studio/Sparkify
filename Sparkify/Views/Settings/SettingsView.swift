@@ -403,7 +403,12 @@ private struct ToolboxSettingsRow: View {
 
 #Preview {
     let container: ModelContainer = {
-        let schema = Schema([PromptItem.self, ParamKV.self])
+        let schema = Schema([
+            PromptItem.self,
+            ParamKV.self,
+            PromptRevision.self,
+            PromptFileAttachment.self
+        ])
         let configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
         let container = try! ModelContainer(for: schema, configurations: [configuration])
         try? SeedDataLoader.ensureSeedData(using: container.mainContext)

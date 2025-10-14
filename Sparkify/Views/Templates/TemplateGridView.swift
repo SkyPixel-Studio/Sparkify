@@ -32,8 +32,11 @@ struct TemplateGridView: View {
     let onExport: () -> Void
     @Binding var searchText: String
     let onAddPrompt: () -> Void
+    let onAddAgentContextPrompt: () -> Void
     let onDeletePrompt: (PromptItem) -> Void
     let onClonePrompt: (PromptItem) -> Void
+    let onShowToast: (String, String) -> Void
+    let onPresentError: (String, String) -> Void
     
     @State private var sortMode: PromptSortMode = .alphabetical
     @State private var preferences = PreferencesService.shared
@@ -107,7 +110,11 @@ struct TemplateGridView: View {
         .searchable(text: $searchText, placement: .toolbar, prompt: "搜索模板")
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
-                Button(action: onAddPrompt) {
+                Menu {
+                    Button("新建普通模板", action: onAddPrompt)
+                        .keyboardShortcut("n", modifiers: .command)
+                    Button("新建代理上下文模板…", action: onAddAgentContextPrompt)
+                } label: {
                     Image(systemName: "plus")
                         .font(.system(size: 16, weight: .semibold))
                         .foregroundStyle(Color.black)
@@ -117,8 +124,8 @@ struct TemplateGridView: View {
                                 .fill(Color.white)
                         )
                 }
-                .buttonStyle(.plain)
-                .keyboardShortcut("n", modifiers: .command)
+                .menuStyle(.borderlessButton)
+                .menuIndicator(.hidden)
             }
         }
         .onDisappear {
@@ -177,6 +184,8 @@ struct TemplateGridView: View {
                                     }
                                 },
                                 onLaunchToolboxApp: openToolboxApp,
+                                onShowToast: onShowToast,
+                                onPresentError: onPresentError,
                                 onOpenDetail: {
                                     onOpenDetail(prompt)
                                 }

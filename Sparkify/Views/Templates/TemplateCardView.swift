@@ -49,6 +49,8 @@ struct TemplateCardView: View {
     let onFilterByTag: (String) -> Void
     let onLaunchToolboxApp: (ToolboxApp) -> Void
     let toolboxApps: [ToolboxApp]
+    let onShowToast: (String, String) -> Void
+    let onPresentError: (String, String) -> Void
 
     @State private var showCopiedHUD = false
     @State private var isMarkdownPreview = false
@@ -61,6 +63,9 @@ struct TemplateCardView: View {
     @State private var isHoveringCard = false
     @State private var isPinHovered = false
     @State private var isCopyHovered = false
+    @State private var isCopyTemplateHovered = false
+    @State private var isOverwriteHovered = false
+    @State private var isSyncHovered = false
     @State private var isEditHovered = false
     @State private var isResetAllHovered = false
     @State private var hoveredResetParamID: PersistentIdentifier?
@@ -70,10 +75,33 @@ struct TemplateCardView: View {
     @State private var paramDrafts: [PersistentIdentifier: String] = [:]
     @State private var pendingSaveTasks: [PersistentIdentifier: Task<Void, Never>] = [:]
     @State private var paramLayoutOverrides: [PersistentIdentifier: ParamInputLayoutOverride] = [:]
+    @State private var isPushingAgentAttachments = false
+    @State private var isPullingAgentAttachment = false
 
     private var renderResult: TemplateEngine.RenderResult {
         let values = Dictionary(uniqueKeysWithValues: prompt.params.map { ($0.key, $0.resolvedValue) })
         return TemplateEngine.render(template: prompt.body, values: values)
+    }
+
+    private var isAgentContext: Bool {
+        prompt.kind == .agentContext
+    }
+
+    private var orderedAttachments: [PromptFileAttachment] {
+        prompt.attachments.sorted { lhs, rhs in
+            if lhs.orderHint == rhs.orderHint {
+                return lhs.displayName.localizedCompare(rhs.displayName) == .orderedAscending
+            }
+            return lhs.orderHint < rhs.orderHint
+        }
+    }
+
+    private var primaryAttachment: PromptFileAttachment? {
+        orderedAttachments.first
+    }
+
+    private var hasAgentAttachments: Bool {
+        orderedAttachments.isEmpty == false
     }
 
     private func isParamMissing(_ param: ParamKV) -> Bool {
@@ -123,7 +151,7 @@ struct TemplateCardView: View {
     }
 
     private var copyButtonBackground: Color {
-        isCopyHovered ? Color.neonYellow : Color.black
+        return isCopyHovered ? Color.neonYellow : Color.black
     }
 
     /// 确保在布局切换后仍然聚焦到用户正在编辑的参数。
@@ -137,11 +165,163 @@ struct TemplateCardView: View {
     }
 
     private var copyButtonForeground: Color {
-        isCopyHovered ? Color.black : Color.white
+        return isCopyHovered ? Color.black : Color.white
     }
 
     private var copyButtonBorder: Color {
-        isCopyHovered ? Color.neonYellow.opacity(0.9) : Color.clear
+        return isCopyHovered ? Color.neonYellow.opacity(0.9) : Color.clear
+    }
+
+    private var overwriteButtonBackground: Color {
+        if hasAgentAttachments == false {
+            return Color.cardSurface.opacity(0.6)
+        }
+        return Color.neonYellow.opacity(isOverwriteHovered ? 1.0 : 0.92)
+    }
+
+    private var overwriteButtonForeground: Color {
+        if hasAgentAttachments == false {
+            return Color.secondary
+        }
+        return Color.black.opacity(isOverwriteHovered ? 0.95 : 0.85)
+    }
+
+    private var overwriteButtonBorder: Color {
+        if hasAgentAttachments == false {
+            return Color.cardOutline.opacity(0.4)
+        }
+        return Color.neonYellow.opacity(isOverwriteHovered ? 1.0 : 0.85)
+    }
+
+    @ViewBuilder
+    private var agentFileActionColumn: some View {
+        VStack(spacing: 4) {
+            Button {
+                overwriteAttachments()
+            } label: {
+                HStack(spacing: 8) {
+                    if isPushingAgentAttachments {
+                        ProgressView()
+                            .progressViewStyle(.circular)
+                            .scaleEffect(0.65)
+                            .tint(Color.black.opacity(0.85))
+                    } else {
+                        Image(systemName: "square.and.arrow.down")
+                            .font(.system(size: 14, weight: .semibold))
+                    }
+                    Text("覆写到文件")
+                        .font(.system(size: 14, weight: .semibold))
+                        .fixedSize()
+                }
+                .padding(.horizontal, 18)
+                .padding(.vertical, 9)
+                .background(
+                    Capsule()
+                        .fill(overwriteButtonBackground)
+                )
+                .foregroundStyle(overwriteButtonForeground)
+                .overlay(
+                    Capsule()
+                        .stroke(overwriteButtonBorder, lineWidth: 1)
+                )
+            }
+            .buttonStyle(.plain)
+            .disabled(isPushingAgentAttachments || isPullingAgentAttachment || hasAgentAttachments == false)
+            .onHover { hovering in
+                guard hasAgentAttachments else {
+                    isOverwriteHovered = false
+                    return
+                }
+                guard isOverwriteHovered != hovering else { return }
+                withAnimation(interactionAnimation) {
+                    isOverwriteHovered = hovering
+                }
+            }
+            .scaleEffect(isOverwriteHovered ? 1.04 : 1.0)
+            .animation(interactionAnimation, value: isOverwriteHovered)
+            .help("将模板正文写回所有关联文件")
+
+            Button("与文件同步") {
+                synchronizeFromPrimaryAttachment()
+            }
+            .font(.system(size: 11, weight: .semibold))
+            .fixedSize()
+            .foregroundStyle(
+                hasAgentAttachments
+                    ? Color.appForeground.opacity(isSyncHovered ? 1.0 : 0.75)
+                    : Color.secondary.opacity(0.5)
+            )
+            .buttonStyle(.plain)
+            .disabled(isPullingAgentAttachment || hasAgentAttachments == false)
+            .onHover { hovering in
+                guard hasAgentAttachments else {
+                    isSyncHovered = false
+                    return
+                }
+                guard isSyncHovered != hovering else { return }
+                withAnimation(.easeInOut(duration: 0.18)) {
+                    isSyncHovered = hovering
+                }
+            }
+            .overlay(alignment: .trailing) {
+                if isPullingAgentAttachment {
+                    ProgressView()
+                        .progressViewStyle(.circular)
+                        .scaleEffect(0.55)
+                        .tint(Color.appForeground)
+                        .offset(x: 18)
+                }
+            }
+            .help("从首个关联文件读取内容并刷新模板正文")
+        }
+    }
+
+    @ViewBuilder
+    private var copyActionColumn: some View {
+        VStack(spacing: isAgentContext ? 4 : 6) {
+            Button {
+                copyFilledPrompt()
+            } label: {
+                Label("复制", systemImage: "doc.on.doc")
+                    .font(.system(size: 14, weight: .semibold))
+                    .fixedSize()
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 9)
+                    .background(
+                        Capsule()
+                            .fill(copyButtonBackground)
+                    )
+                    .foregroundStyle(copyButtonForeground)
+                    .overlay(
+                        Capsule()
+                            .stroke(copyButtonBorder, lineWidth: 1)
+                    )
+            }
+            .buttonStyle(.plain)
+            .onHover { hovering in
+                guard isCopyHovered != hovering else { return }
+                withAnimation(interactionAnimation) {
+                    isCopyHovered = hovering
+                }
+            }
+            .scaleEffect(isCopyHovered ? 1.04 : 1.0)
+            .animation(interactionAnimation, value: isCopyHovered)
+            .keyboardShortcut("d", modifiers: .command)
+
+            Button("仅复制模板") {
+                copyTemplateOnly()
+            }
+            .font(.system(size: 11, weight: .semibold))
+            .fixedSize()
+            .foregroundStyle(Color.appForeground.opacity(isCopyTemplateHovered ? 0.95 : 0.75))
+            .buttonStyle(.plain)
+            .onHover { hovering in
+                guard isCopyTemplateHovered != hovering else { return }
+                withAnimation(.easeInOut(duration: 0.18)) {
+                    isCopyTemplateHovered = hovering
+                }
+            }
+        }
     }
 
     private let quickActionVisualDiameter: CGFloat = 26
@@ -165,7 +345,8 @@ struct TemplateCardView: View {
                     displayName: $0.displayName,
                     kind: $0.optionKind
                 )
-            }
+            },
+            kind: prompt.kind
         )
     }
 
@@ -180,59 +361,95 @@ struct TemplateCardView: View {
     private var contextMenuConfiguration: TemplateCardContextMenuBridge.Configuration {
         let snapshot = makeContextQuickActionSnapshot()
         let title = prompt.title.isEmpty ? "未命名模板" : prompt.title
+        var actions: [TemplateCardContextMenuBridge.Configuration.Action] = [
+            .init(
+                title: "编辑模板",
+                systemImageName: "rectangle.and.pencil.and.ellipsis"
+            ) {
+                sendQuickAction(.openDetail(id: snapshot.id))
+            },
+            .init(
+                title: "复制",
+                systemImageName: "square.and.pencil"
+            ) {
+                sendQuickAction(.copyFilledPrompt(id: snapshot.id))
+            },
+            .init(
+                title: "仅复制模板",
+                systemImageName: "doc.on.doc"
+            ) {
+                sendQuickAction(.copyTemplateOnly(id: snapshot.id))
+            }
+        ]
+
+        if isAgentContext {
+            actions.append(
+                .init(
+                    title: "覆写到文件",
+                    systemImageName: "square.and.arrow.down"
+                ) {
+                    sendQuickAction(.overwriteAgentFiles(id: snapshot.id))
+                }
+            )
+            actions.append(
+                .init(
+                    title: "与文件同步",
+                    systemImageName: "arrow.down.doc"
+                ) {
+                    sendQuickAction(.syncAgentFromFile(id: snapshot.id))
+                }
+            )
+        }
+
+        actions.append(
+            .init(
+                title: snapshot.isPinned ? "取消置顶" : "置顶此模板",
+                systemImageName: "pin"
+            ) {
+                sendQuickAction(.togglePin(id: snapshot.id))
+            }
+        )
+
+        actions.append(
+            .init(
+                title: "更改摘要…",
+                systemImageName: "text.badge.star"
+            ) {
+                sendQuickAction(.rename(id: snapshot.id))
+            }
+        )
+
+        actions.append(
+            .init(
+                title: "克隆模板",
+                systemImageName: "doc.on.doc"
+            ) {
+                sendQuickAction(.clone(id: snapshot.id))
+            }
+        )
+
+        actions.append(
+            .init(
+                title: "重置所有参数",
+                systemImageName: "arrow.counterclockwise.circle"
+            ) {
+                sendQuickAction(.resetAllParams(id: snapshot.id))
+            }
+        )
+
+        actions.append(
+            .init(
+                title: "删除模板",
+                systemImageName: "trash",
+                role: .destructive
+            ) {
+                sendQuickAction(.delete(id: snapshot.id))
+            }
+        )
+
         return TemplateCardContextMenuBridge.Configuration(
             headerTitle: title,
-            actions: [
-                .init(
-                    title: "编辑模板",
-                    systemImageName: "rectangle.and.pencil.and.ellipsis"
-                ) {
-                    sendQuickAction(.openDetail(id: snapshot.id))
-                },
-                .init(
-                    title: "复制",
-                    systemImageName: "square.and.pencil"
-                ) {
-                    sendQuickAction(.copyFilledPrompt(id: snapshot.id))
-                },
-                .init(
-                    title: "仅复制模板",
-                    systemImageName: "doc.on.doc"
-                ) {
-                    sendQuickAction(.copyTemplateOnly(id: snapshot.id))
-                },
-                .init(
-                    title: snapshot.isPinned ? "取消置顶" : "置顶此模板",
-                    systemImageName: "pin"
-                ) {
-                    sendQuickAction(.togglePin(id: snapshot.id))
-                },
-                .init(
-                    title: "更改摘要…",
-                    systemImageName: "text.badge.star"
-                ) {
-                    sendQuickAction(.rename(id: snapshot.id))
-                },
-                .init(
-                    title: "克隆模板",
-                    systemImageName: "doc.on.doc"
-                ) {
-                    sendQuickAction(.clone(id: snapshot.id))
-                },
-                .init(
-                    title: "重置所有参数",
-                    systemImageName: "arrow.counterclockwise.circle"
-                ) {
-                    sendQuickAction(.resetAllParams(id: snapshot.id))
-                },
-                .init(
-                    title: "删除模板",
-                    systemImageName: "trash",
-                    role: .destructive
-                ) {
-                    sendQuickAction(.delete(id: snapshot.id))
-                }
-            ]
+            actions: actions
         )
     }
 
@@ -244,6 +461,8 @@ struct TemplateCardView: View {
         onClone: @escaping (PromptItem) -> Void = { _ in },
         onFilterByTag: @escaping (String) -> Void = { _ in },
         onLaunchToolboxApp: @escaping (ToolboxApp) -> Void = { _ in },
+        onShowToast: @escaping (String, String) -> Void = { _, _ in },
+        onPresentError: @escaping (String, String) -> Void = { _, _ in },
         onOpenDetail: @escaping () -> Void
     ) {
         self._prompt = Bindable(prompt)
@@ -253,6 +472,8 @@ struct TemplateCardView: View {
         self.onFilterByTag = onFilterByTag
         self.onLaunchToolboxApp = onLaunchToolboxApp
         self.toolboxApps = toolboxApps
+        self.onShowToast = onShowToast
+        self.onPresentError = onPresentError
         self.onOpenDetail = onOpenDetail
     }
 
@@ -353,6 +574,7 @@ struct TemplateCardView: View {
             lastFocusedParam = target
         }
         .accessibilityHidden(true)
+        .frame(maxWidth: .infinity)
     }
 
     private var header: some View {
@@ -439,49 +661,30 @@ struct TemplateCardView: View {
                         }
                     }
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
+
                 Spacer()
 
-                VStack(alignment: .center, spacing: 4) {
-                    Button {
-                        copyFilledPrompt()
-                    } label: {
-                        Label("复制", systemImage: "doc.on.doc")
-                            .font(.system(size: 14, weight: .semibold))
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 9)
-                            .background(
-                                Capsule()
-                                    .fill(copyButtonBackground)
-                            )
-                            .foregroundStyle(copyButtonForeground)
-                            .overlay(
-                                Capsule()
-                                    .stroke(copyButtonBorder, lineWidth: 1)
-                            )
-                    }
-                    .buttonStyle(.plain)
-                    .onHover { hovering in
-                        guard isCopyHovered != hovering else { return }
-                        withAnimation(interactionAnimation) {
-                            isCopyHovered = hovering
+                VStack(alignment: .center, spacing: isAgentContext ? 10 : 8) {
+                    if isAgentContext {
+                        HStack(alignment: .top, spacing: 6) {
+                            agentFileActionColumn
+                            copyActionColumn
                         }
+                    } else {
+                        copyActionColumn
                     }
-                    .scaleEffect(isCopyHovered ? 1.04 : 1.0)
-                    .animation(interactionAnimation, value: isCopyHovered)
-                    .keyboardShortcut("d", modifiers: .command)
-
-                    Button("仅复制模板") {
-                        copyTemplateOnly()
-                    }
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(Color.appForeground.opacity(0.8))
-                    .buttonStyle(.plain)
 
                     if !renderResult.missingKeys.isEmpty {
                         Text("待填写：\(renderResult.missingKeys.joined(separator: ", "))")
                             .font(.system(size: 11))
                             .foregroundStyle(Color.secondary)
                             .multilineTextAlignment(.center)
+                    } else if isAgentContext, hasAgentAttachments {
+                        Text("关联文件：\(orderedAttachments.count) 个")
+                            .font(.system(size: 11))
+                            .foregroundStyle(Color.secondary)
+                            .frame(maxWidth: .infinity, alignment: .trailing)
                     }
                 }
             }
@@ -865,6 +1068,12 @@ struct TemplateCardView: View {
         case let .copyTemplateOnly(id):
             guard id == prompt.uuid else { return }
             copyTemplateOnly()
+        case let .overwriteAgentFiles(id):
+            guard id == prompt.uuid else { return }
+            overwriteAttachments()
+        case let .syncAgentFromFile(id):
+            guard id == prompt.uuid else { return }
+            synchronizeFromPrimaryAttachment()
         case let .togglePin(id):
             guard id == prompt.uuid else { return }
             togglePinned()
@@ -1177,6 +1386,84 @@ struct TemplateCardView: View {
         } else {
             print("复制失败：无法写入剪贴板")
         }
+    }
+
+    private func overwriteAttachments() {
+        guard isAgentContext else { return }
+        guard hasAgentAttachments else {
+            onPresentError("没有可覆写的文件", "请先在详情页关联需要同步的 Markdown 文件。")
+            return
+        }
+        guard isPushingAgentAttachments == false else { return }
+
+        isPushingAgentAttachments = true
+        Task { @MainActor in
+            defer { isPushingAgentAttachments = false }
+            let results = AgentContextFileService.shared.overwrite(prompt.body, to: orderedAttachments)
+            persistChange(reason: "agentOverwrite")
+            let successCount = results.filter(\.isSuccess).count
+            if successCount > 0 {
+                onShowToast("已覆写 \(successCount) 个文件", "square.and.arrow.down")
+            }
+            if let failure = results.first(where: { $0.isSuccess == false }),
+               let error = failure.error {
+                onPresentError("覆写失败", error.localizedDescription)
+            }
+        }
+    }
+
+    private func synchronizeFromPrimaryAttachment() {
+        guard isAgentContext else { return }
+        guard let primary = primaryAttachment else {
+            onPresentError("无法同步", "请先关联至少一个 Markdown 文件。")
+            return
+        }
+        guard isPullingAgentAttachment == false else { return }
+
+        isPullingAgentAttachment = true
+        Task { @MainActor in
+            defer { isPullingAgentAttachment = false }
+            let result = AgentContextFileService.shared.pullContent(from: primary)
+            if let error = result.error {
+                persistChange(reason: "agentPullError")
+                onPresentError("同步失败", error.localizedDescription)
+                return
+            }
+
+            let newBody = result.content ?? ""
+            if prompt.body != newBody {
+                prompt.body = newBody
+                refreshParamsFromTemplate()
+                persistWithTimestampUpdate()
+            } else {
+                persistChange(reason: "agentPullNoChange")
+            }
+            onShowToast("已从「\(primary.displayName)」同步", "arrow.down.doc")
+        }
+    }
+
+    private func refreshParamsFromTemplate() {
+        let keys = TemplateEngine.placeholders(in: prompt.body)
+        var existing = Dictionary(uniqueKeysWithValues: prompt.params.map { ($0.key, $0) })
+        var ordered: [ParamKV] = []
+
+        for key in keys {
+            if let param = existing.removeValue(forKey: key) {
+                ordered.append(param)
+            } else {
+                let created = ParamKV(key: key, value: "", owner: prompt)
+                ordered.append(created)
+            }
+        }
+
+        for removed in existing.values {
+            modelContext.delete(removed)
+        }
+
+        prompt.params = ordered
+        pendingSaveTasks.values.forEach { $0.cancel() }
+        pendingSaveTasks.removeAll()
+        paramDrafts.removeAll()
     }
 
     private func showCopiedHUDFeedback() {

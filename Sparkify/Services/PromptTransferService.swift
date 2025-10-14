@@ -73,7 +73,8 @@ struct PromptTransferService {
         prompt.title = payload.title
         prompt.body = payload.body
         prompt.pinned = payload.pinned
-        prompt.tags = payload.tags
+        prompt.kind = payload.kind
+        prompt.tags = PromptTagPolicy.normalize(payload.tags, for: prompt.kind)
         prompt.createdAt = payload.createdAt
         prompt.updatedAt = payload.updatedAt
         prompt.params = payload.params.map { param in
@@ -97,7 +98,9 @@ struct PromptTransferService {
             updatedAt: payload.updatedAt,
             params: payload.params.map {
                 ParamKV(key: $0.key, value: $0.value, defaultValue: $0.defaultValue)
-            }
+            },
+            attachments: [],
+            kind: payload.kind
         )
     }
 
@@ -121,6 +124,7 @@ private struct PromptPayload: Codable {
     let createdAt: Date
     let updatedAt: Date
     let params: [ParamPayload]
+    let kind: PromptItem.Kind
 
     init(from prompt: PromptItem) {
         uuid = prompt.uuid
@@ -137,6 +141,50 @@ private struct PromptPayload: Codable {
                 defaultValue: $0.defaultValue ?? $0.value
             )
         }
+        kind = prompt.kind
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case uuid
+        case title
+        case body
+        case pinned
+        case tags
+        case createdAt
+        case updatedAt
+        case params
+        case kind
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        uuid = try container.decode(String.self, forKey: .uuid)
+        title = try container.decode(String.self, forKey: .title)
+        body = try container.decode(String.self, forKey: .body)
+        pinned = try container.decode(Bool.self, forKey: .pinned)
+        tags = try container.decode([String].self, forKey: .tags)
+        createdAt = try container.decode(Date.self, forKey: .createdAt)
+        updatedAt = try container.decode(Date.self, forKey: .updatedAt)
+        params = try container.decode([ParamPayload].self, forKey: .params)
+        if let kindRawValue = try container.decodeIfPresent(String.self, forKey: .kind),
+           let decodedKind = PromptItem.Kind(rawValue: kindRawValue) {
+            kind = decodedKind
+        } else {
+            kind = .standard
+        }
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(uuid, forKey: .uuid)
+        try container.encode(title, forKey: .title)
+        try container.encode(body, forKey: .body)
+        try container.encode(pinned, forKey: .pinned)
+        try container.encode(tags, forKey: .tags)
+        try container.encode(createdAt, forKey: .createdAt)
+        try container.encode(updatedAt, forKey: .updatedAt)
+        try container.encode(params, forKey: .params)
+        try container.encode(kind.rawValue, forKey: .kind)
     }
 }
 
