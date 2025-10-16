@@ -12,9 +12,9 @@ struct AgentContextFileService {
         var errorDescription: String? {
             switch self {
             case .userCancelled:
-                return "用户取消了文件选择。"
+                return String(localized: "file_selection_cancelled", defaultValue: "用户取消了文件选择。")
             case .emptySelection:
-                return "未选择任何 Markdown 文件。"
+                return String(localized: "file_selection_empty", defaultValue: "未选择任何 Markdown 文件。")
             }
         }
     }
@@ -29,15 +29,15 @@ struct AgentContextFileService {
         var errorDescription: String? {
             switch self {
             case .bookmarkCreationFailed(let url, let error):
-                return "无法为 \(url.lastPathComponent) 创建书签：\(error.localizedDescription)"
+                return String(localized: "bookmark_creation_failed", defaultValue: "无法为 \(url.lastPathComponent) 创建书签：\(error.localizedDescription)")
             case .bookmarkResolutionFailed(let message):
-                return "文件书签失效：\(message)"
+                return String(localized: "bookmark_resolution_failed", defaultValue: "文件书签失效：\(message)")
             case .accessDenied(let url):
-                return "没有权限访问 \(url.lastPathComponent)。"
+                return String(localized: "file_access_denied", defaultValue: "没有权限访问 \(url.lastPathComponent)。")
             case .readFailed(let url, let error):
-                return "读取 \(url.lastPathComponent) 失败：\(error.localizedDescription)"
+                return String(localized: "file_read_failed", defaultValue: "读取 \(url.lastPathComponent) 失败：\(error.localizedDescription)")
             case .writeFailed(let url, let error):
-                return "写入 \(url.lastPathComponent) 失败：\(error.localizedDescription)"
+                return String(localized: "file_write_failed", defaultValue: "写入 \(url.lastPathComponent) 失败：\(error.localizedDescription)")
             }
         }
     }
@@ -67,8 +67,8 @@ struct AgentContextFileService {
         panel.allowsMultipleSelection = true
         panel.treatsFilePackagesAsDirectories = true
         panel.allowedContentTypes = Self.markdownTypes
-        panel.prompt = "选择"
-        panel.message = "选择一个或多个本地 Markdown 文件。若需显示隐藏文件，请按 ⌘⇧."
+        panel.prompt = String(localized: "file_picker_prompt", defaultValue: "选择")
+        panel.message = String(localized: "file_picker_message", defaultValue: "选择一个或多个本地 Markdown 文件。若需显示隐藏文件，请按 ⌘⇧.")
 
         let response = panel.runModal()
         guard response == .OK else {
@@ -214,6 +214,9 @@ struct AgentContextFileService {
         }
         append(UTType(filenameExtension: "md"))
         append(UTType(filenameExtension: "mdown"))
+        append(UTType(filenameExtension: "mdc"))
+        append(UTType(filenameExtension: "cursorrules"))
+        append(UTType(filenameExtension: "txt"))
         return ordered
     }()
 }

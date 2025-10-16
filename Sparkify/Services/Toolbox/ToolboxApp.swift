@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import SwiftUI
 
 struct ToolboxApp: Identifiable, Hashable {
     enum IconSource: Hashable {
@@ -32,18 +33,31 @@ struct ToolboxApp: Identifiable, Hashable {
     }
     
     let id: String
-    let displayName: String
-    let summary: String
+    let displayNameKey: String
+    let summaryKey: String
     let launchTarget: LaunchTarget
     let iconSources: [IconSource]
     let optionKind: OptionKind
     let isEnabledByDefault: Bool
     
+    var displayName: String {
+        String(localized: String.LocalizationValue(displayNameKey))
+    }
+    
+    var summary: String {
+        String(localized: String.LocalizationValue(summaryKey))
+    }
+
+    /// Check if this app is installed (for native apps only; web apps always return true)
+    var isInstalled: Bool {
+        ToolboxLauncher.shared.isAppInstalled(self)
+    }
+    
     static let all: [ToolboxApp] = [
         ToolboxApp(
             id: "chatgpt-app",
-            displayName: "ChatGPT",
-            summary: "OpenAI 官方 macOS 应用，需提前安装",
+            displayNameKey: "toolbox_chatgpt_name",
+            summaryKey: "toolbox_chatgpt_app_summary",
             launchTarget: .native(
                 bundleID: "com.openai.chat",
                 fallbackURL: nil
@@ -58,8 +72,8 @@ struct ToolboxApp: Identifiable, Hashable {
         ),
         ToolboxApp(
             id: "chatgpt-web",
-            displayName: "ChatGPT",
-            summary: "ChatGPT 网页客户端",
+            displayNameKey: "toolbox_chatgpt_name",
+            summaryKey: "toolbox_chatgpt_web_summary",
             launchTarget: .web(url: URL(string: "https://chat.openai.com")!),
             iconSources: [
                 .remoteFavicon(URL(string: "https://chat.openai.com/favicon.ico")!),
@@ -70,8 +84,8 @@ struct ToolboxApp: Identifiable, Hashable {
         ),
         ToolboxApp(
             id: "claude-app",
-            displayName: "Claude",
-            summary: "Anthropic Claude macOS 应用，需提前安装",
+            displayNameKey: "toolbox_claude_name",
+            summaryKey: "toolbox_claude_app_summary",
             launchTarget: .native(
                 bundleID: "com.anthropic.claude",
                 fallbackURL: nil
@@ -86,8 +100,8 @@ struct ToolboxApp: Identifiable, Hashable {
         ),
         ToolboxApp(
             id: "claude-web",
-            displayName: "Claude",
-            summary: "Claude 网页客户端",
+            displayNameKey: "toolbox_claude_name",
+            summaryKey: "toolbox_claude_web_summary",
             launchTarget: .web(url: URL(string: "https://claude.ai")!),
             iconSources: [
                 .remoteFavicon(URL(string: "https://claude.ai/favicon.ico")!),
@@ -98,8 +112,8 @@ struct ToolboxApp: Identifiable, Hashable {
         ),
         ToolboxApp(
             id: "gemini",
-            displayName: "Gemini",
-            summary: "Google Gemini 网页客户端",
+            displayNameKey: "toolbox_gemini_name",
+            summaryKey: "toolbox_gemini_summary",
             launchTarget: .web(url: URL(string: "https://gemini.google.com")!),
             iconSources: [
                 .remoteFavicon(URL(string: "https://www.gstatic.com/lamda/images/gemini_sparkle_4g_512_lt_f94943af3be039176192d.png")!),
@@ -110,8 +124,8 @@ struct ToolboxApp: Identifiable, Hashable {
         ),
         ToolboxApp(
             id: "aistudio",
-            displayName: "Google AI Studio",
-            summary: "Google AI Studio 网页客户端，可以访问更多 Google DeepMind 模型",
+            displayNameKey: "toolbox_google_ai_studio_name",
+            summaryKey: "toolbox_google_ai_studio_summary",
             launchTarget: .web(url: URL(string: "https://aistudio.google.com/")!),
             iconSources: [
                 .remoteFavicon(URL(string: "https://www.gstatic.com/aistudio/ai_studio_favicon_2_32x32.png")!),
@@ -122,8 +136,8 @@ struct ToolboxApp: Identifiable, Hashable {
         ),
         ToolboxApp(
             id: "grok",
-            displayName: "Grok",
-            summary: "xAI Grok 网页客户端",
+            displayNameKey: "toolbox_grok_name",
+            summaryKey: "toolbox_grok_summary",
             launchTarget: .web(url: URL(string: "https://grok.com")!),
             iconSources: [
                 .remoteFavicon(URL(string: "https://grok.com/images/favicon-light.png")!),
@@ -134,8 +148,8 @@ struct ToolboxApp: Identifiable, Hashable {
         ),
         ToolboxApp(
             id: "qwen",
-            displayName: "Qwen",
-            summary: "Qwen 网页客户端",
+            displayNameKey: "toolbox_qwen_name",
+            summaryKey: "toolbox_qwen_summary",
             launchTarget: .web(url: URL(string: "https://chat.qwen.ai/")!),
             iconSources: [
                 .remoteFavicon(URL(string: "https://assets.alicdn.com/g/qwenweb/qwen-webui-fe/0.0.223/favicon.png")!),
@@ -146,8 +160,8 @@ struct ToolboxApp: Identifiable, Hashable {
         ),
         ToolboxApp(
             id: "qwen-cn",
-            displayName: "通义千问",
-            summary: "通义千问（中国大陆） 网页客户端",
+            displayNameKey: "toolbox_tongyi_qwen_name",
+            summaryKey: "toolbox_tongyi_qwen_summary",
             launchTarget: .web(url: URL(string: "https://www.tongyi.com/")!),
             iconSources: [
                 .remoteFavicon(URL(string: "https://img.alicdn.com/imgextra/i4/O1CN01EfJVFQ1uZPd7W4W6i_!!6000000006051-2-tps-112-112.png")!),
@@ -158,8 +172,8 @@ struct ToolboxApp: Identifiable, Hashable {
         ),
         ToolboxApp(
             id: "doubao",
-            displayName: "豆包",
-            summary: " ByteDance 豆包大模型 网页客户端",
+            displayNameKey: "toolbox_doubao_name",
+            summaryKey: "toolbox_doubao_summary",
             launchTarget: .web(url: URL(string: "https://www.doubao.com")!),
             iconSources: [
                 .remoteFavicon(URL(string: "https://ark-auto-2100466578-cn-beijing-default.tos-cn-beijing.volces.com/model_cardPt9S1OY9sV.png")!),
@@ -170,8 +184,8 @@ struct ToolboxApp: Identifiable, Hashable {
         ),
         ToolboxApp(
             id: "deepseek",
-            displayName: "DeepSeek",
-            summary: " DeepSeek 网页客户端",
+            displayNameKey: "toolbox_deepseek_name",
+            summaryKey: "toolbox_deepseek_summary",
             launchTarget: .web(url: URL(string: "https://chat.deepseek.com/")!),
             iconSources: [
                 .remoteFavicon(URL(string: "https://chat.deepseek.com/favicon.svg")!),
@@ -183,6 +197,11 @@ struct ToolboxApp: Identifiable, Hashable {
     ]
 
     static let defaultOrder: [String] = all.map(\.id)
+
+    /// Returns only apps that are installed on the system (filters out uninstalled native apps)
+    static var installed: [ToolboxApp] {
+        all.filter { $0.isInstalled }
+    }
 
     static func app(withID id: String) -> ToolboxApp? {
         all.first { $0.id == id }

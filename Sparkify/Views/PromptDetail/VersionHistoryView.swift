@@ -62,15 +62,15 @@ struct VersionHistoryView: View {
 
             actionBar
         }
-        .confirmationDialog("恢复此版本？", isPresented: restoreDialogBinding, titleVisibility: .visible) {
-            Button("恢复版本", role: .destructive) {
+        .confirmationDialog(String(localized: "restore_version_title", defaultValue: "恢复此版本？"), isPresented: restoreDialogBinding, titleVisibility: .visible) {
+            Button(String(localized: "restore_version", defaultValue: "恢复版本"), role: .destructive) {
                 if let revision = revisionToRestore {
                     restoreRevision(revision)
                 }
             }
-            Button("取消", role: .cancel) {}
+            Button(String(localized: "cancel"), role: .cancel) {}
         } message: {
-            Text("将使用此历史版本覆盖当前内容，并生成新版本记录。此操作不可撤销。")
+            Text(String(localized: "restore_version_message", defaultValue: "将使用此历史版本覆盖当前内容，并生成新版本记录。此操作不可撤销。"))
         }
     }
 
@@ -83,9 +83,9 @@ struct VersionHistoryView: View {
 
     private var header: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("版本历史")
+            Text(String(localized: "version_history", defaultValue: "版本历史"))
                 .font(.title3.weight(.semibold))
-            Text("左侧选择要查看的版本，再挑选对比对象。默认与当前内容对比。右键点击版本可标记为里程碑，里程碑版本永久保留不会被自动清理。")
+            Text(String(localized: "version_history_instructions", defaultValue: "左侧选择要查看的版本，再挑选对比对象。默认与当前内容对比。右键点击版本可标记为里程碑，里程碑版本永久保留不会被自动清理。"))
                 .font(.callout)
                 .foregroundStyle(.secondary)
         }
@@ -125,9 +125,9 @@ struct VersionHistoryView: View {
 
     private var emptyState: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("暂无版本记录")
+            Text(String(localized: "no_version_records", defaultValue: "暂无版本记录"))
                 .font(.title3.weight(.semibold))
-            Text("保存至少一次模板即可在这里查看版本差异。")
+            Text(String(localized: "save_once_to_see_diff", defaultValue: "保存至少一次模板即可在这里查看版本差异。"))
                 .font(.callout)
                 .foregroundStyle(.secondary)
         }
@@ -162,7 +162,7 @@ struct VersionHistoryView: View {
         } label: {
             VStack(alignment: .leading, spacing: 8) {
                 HStack(spacing: 8) {
-                    Text(revision.titleSnapshot.isEmpty ? "未命名模板" : revision.titleSnapshot)
+                    Text(revision.titleSnapshot.isEmpty ? String(localized: "unnamed_template", defaultValue: "未命名模板") : revision.titleSnapshot)
                         .font(.system(size: 15, weight: .semibold, design: .rounded))
                         .lineLimit(1)
                     if revision.isMilestone {
@@ -172,7 +172,7 @@ struct VersionHistoryView: View {
                 Text(revision.createdAt.formatted(date: .abbreviated, time: .shortened))
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                Text("作者：\(revision.author)")
+                Text(String(format: String(localized: "author", defaultValue: "作者：%@"), revision.author))
                     .font(.caption2)
                     .foregroundStyle(.secondary)
             }
@@ -189,7 +189,7 @@ struct VersionHistoryView: View {
             Button {
                 revisionToRestore = revision
             } label: {
-                Label("恢复此版本", systemImage: "clock.arrow.circlepath")
+                Label(String(localized: "restore_this_version", defaultValue: "恢复此版本"), systemImage: "clock.arrow.circlepath")
             }
             
             Divider()
@@ -198,7 +198,7 @@ struct VersionHistoryView: View {
                 toggleMilestone(for: revision)
             } label: {
                 Label(
-                    revision.isMilestone ? "取消里程碑标记" : "标记为里程碑",
+                    revision.isMilestone ? String(localized: "unmark_milestone", defaultValue: "取消里程碑标记") : String(localized: "mark_as_milestone", defaultValue: "标记为里程碑"),
                     systemImage: revision.isMilestone ? "flag.slash" : "flag.fill"
                 )
             }
@@ -210,7 +210,7 @@ struct VersionHistoryView: View {
         HStack(spacing: 4) {
             Image(systemName: "flag.fill")
                 .font(.system(size: 10, weight: .bold))
-            Text("里程碑")
+            Text(String(localized: "milestone", defaultValue: "里程碑"))
                 .font(.system(size: 11, weight: .semibold))
         }
         .foregroundStyle(Color.black)
@@ -229,7 +229,7 @@ struct VersionHistoryView: View {
         do {
             try modelContext.save()
         } catch {
-            print("切换里程碑状态失败: \(error)")
+            print("Failed to toggle milestone status: \(error)")
         }
     }
 
@@ -278,7 +278,7 @@ struct VersionHistoryView: View {
     private var actionBar: some View {
         HStack(spacing: 16) {
             Spacer()
-            Button("关闭") {
+            Button(String(localized: "close", defaultValue: "关闭")) {
                 onClose()
             }
             .keyboardShortcut(.escape, modifiers: [])
@@ -292,17 +292,18 @@ struct VersionHistoryView: View {
 
     private var comparisonPicker: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("对比目标")
+            Text(String(localized: "comparison_target", defaultValue: "对比目标"))
                 .font(.caption)
                 .foregroundStyle(.secondary)
+                .padding(.top, 8)
 
             Menu {
                 Button {
                     comparisonRevisionID = VersionHistoryCurrentSelectionID
                 } label: {
                     selectionRow(
-                        title: "当前内容",
-                        subtitle: "未保存修改也会纳入比较",
+                        title: String(localized: "current_content", defaultValue: "当前内容"),
+                        subtitle: String(localized: "unsaved_changes_included", defaultValue: "未保存修改也会纳入比较"),
                         icon: "sparkles",
                         isSelected: comparisonIsCurrent
                     )
@@ -318,7 +319,7 @@ struct VersionHistoryView: View {
                         comparisonRevisionID = revision.uuid
                     } label: {
                         selectionRow(
-                            title: revision.titleSnapshot.isEmpty ? "未命名模板" : revision.titleSnapshot,
+                            title: revision.titleSnapshot.isEmpty ? String(localized: "unnamed_template", defaultValue: "未命名模板") : revision.titleSnapshot,
                             subtitle: revision.createdAt.formatted(date: .abbreviated, time: .shortened),
                             icon: revision.isMilestone ? "flag.fill" : "clock",
                             isSelected: isSelected
@@ -351,15 +352,15 @@ struct VersionHistoryView: View {
 
     private var currentComparisonLabel: (title: String, icon: String) {
         if comparisonIsCurrent {
-            return ("当前内容", "sparkles")
+            return (String(localized: "current_content", defaultValue: "当前内容"), "sparkles")
         }
         if let revision = comparisonRevision {
             return (
-                revision.titleSnapshot.isEmpty ? "未命名模板" : revision.titleSnapshot,
+                revision.titleSnapshot.isEmpty ? String(localized: "unnamed_template", defaultValue: "未命名模板") : revision.titleSnapshot,
                 revision.isMilestone ? "flag.fill" : "clock"
             )
         }
-        return ("当前内容", "sparkles")
+        return (String(localized: "current_content", defaultValue: "当前内容"), "sparkles")
     }
 
     private func selectionRow(
@@ -392,7 +393,7 @@ struct VersionHistoryView: View {
     private var diffDetail: some View {
         Group {
             if baselineRevision == nil {
-                Text("请选择左侧某个版本，随后选择你想要比较的目标。默认与当前内容对比。")
+                Text(String(localized: "select_version_to_compare", defaultValue: "请选择左侧某个版本，随后选择你想要比较的目标。默认与当前内容对比。"))
                     .font(.callout)
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -407,7 +408,7 @@ struct VersionHistoryView: View {
                         .frame(maxWidth: .infinity, alignment: .topLeading)
                 }
             } else {
-                Text("选定的对比目标无效，请重新选择。")
+                Text(String(localized: "invalid_comparison_target", defaultValue: "选定的对比目标无效，请重新选择。"))
                     .font(.callout)
                     .foregroundStyle(.secondary)
             }
@@ -421,8 +422,8 @@ private struct DiffDetailView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 28) {
-            DiffSection(title: "摘要", segments: diff.titleSegments)
-            DiffSection(title: "正文", segments: diff.bodySegments)
+            DiffSection(title: String(localized: "summary", defaultValue: "摘要"), segments: diff.titleSegments)
+            DiffSection(title: String(localized: "body", defaultValue: "正文"), segments: diff.bodySegments)
             TagDiffSection(diff: diff.tagDiff)
             ParameterDiffSection(diffs: diff.parameterDiffs)
         }
@@ -448,7 +449,7 @@ private struct DiffSection: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
             if segments.isEmpty {
-                Text("无变化")
+                Text(String(localized: "no_change", defaultValue: "无变化"))
                     .font(.callout)
                     .foregroundStyle(.secondary)
             } else {
@@ -493,24 +494,24 @@ private struct TagDiffSection: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("标签")
+            Text(String(localized: "tags", defaultValue: "标签"))
                 .font(.caption)
                 .foregroundStyle(.secondary)
 
             if diff.added.isEmpty, diff.removed.isEmpty, diff.unchanged.isEmpty {
-                Text("无变化")
+                Text(String(localized: "no_change", defaultValue: "无变化"))
                     .font(.callout)
                     .foregroundStyle(.secondary)
             } else {
                 VStack(alignment: .leading, spacing: 6) {
                     if diff.added.isNotEmpty {
-                        TagListView(title: "新增", tags: diff.added, color: .green)
+                        TagListView(title: String(localized: "added", defaultValue: "新增"), tags: diff.added, color: .green)
                     }
                     if diff.removed.isNotEmpty {
-                        TagListView(title: "移除", tags: diff.removed, color: .red)
+                        TagListView(title: String(localized: "removed", defaultValue: "移除"), tags: diff.removed, color: .red)
                     }
                     if diff.unchanged.isNotEmpty {
-                        TagListView(title: "保留", tags: diff.unchanged, color: .secondary)
+                        TagListView(title: String(localized: "kept", defaultValue: "保留"), tags: diff.unchanged, color: .secondary)
                     }
                 }
             }
@@ -555,35 +556,59 @@ private struct WrapTags: View {
 private struct FlexibleTagFlow<Content: View>: View {
     let tags: [String]
     let content: (String) -> Content
-
+    
+    @State private var totalHeight = CGFloat.zero
+    
     var body: some View {
-        GeometryReader { geometry in
-            tagLayout(in: geometry.size.width)
-        }
-        .frame(minHeight: 24)
-    }
-
-    private func tagLayout(in width: CGFloat) -> some View {
-        var currentX: CGFloat = 0
-        var currentY: CGFloat = 0
-
-        return ZStack(alignment: .topLeading) {
-            ForEach(tags, id: \.self) { tag in
-                content(tag)
-                    .alignmentGuide(.leading) { dimension in
-                        if currentX + dimension.width > width {
-                            currentX = 0
-                            currentY -= dimension.height + 6
-                        }
-                        let result = currentX
-                        currentX += dimension.width + 8
-                        return result
-                    }
-                    .alignmentGuide(.top) { dimension in
-                        let result = currentY
-                        return result
-                    }
+        VStack(alignment: .leading, spacing: 0) {
+            GeometryReader { geometry in
+                generateContent(in: geometry)
             }
+        }
+        .frame(height: totalHeight)
+    }
+    
+    private func generateContent(in geometry: GeometryProxy) -> some View {
+        var width = CGFloat.zero
+        var height = CGFloat.zero
+        
+        return ZStack(alignment: .topLeading) {
+            ForEach(Array(tags.enumerated()), id: \.offset) { index, tag in
+                content(tag)
+                    .padding(.trailing, 8)
+                    .padding(.bottom, 6)
+                    .alignmentGuide(.leading, computeValue: { dimension in
+                        if abs(width - dimension.width) > geometry.size.width {
+                            width = 0
+                            height -= dimension.height
+                        }
+                        let result = width
+                        if index == tags.count - 1 {
+                            width = 0
+                        } else {
+                            width -= dimension.width
+                        }
+                        return result
+                    })
+                    .alignmentGuide(.top, computeValue: { dimension in
+                        let result = height
+                        if index == tags.count - 1 {
+                            height = 0
+                        }
+                        return result
+                    })
+            }
+        }
+        .background(viewHeightReader($totalHeight))
+    }
+    
+    private func viewHeightReader(_ binding: Binding<CGFloat>) -> some View {
+        return GeometryReader { geometry -> Color in
+            let rect = geometry.frame(in: .local)
+            DispatchQueue.main.async {
+                binding.wrappedValue = rect.size.height
+            }
+            return .clear
         }
     }
 }
@@ -593,11 +618,11 @@ private struct ParameterDiffSection: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("参数默认值")
+            Text(String(localized: "parameter_defaults", defaultValue: "参数默认值"))
                 .font(.caption)
                 .foregroundStyle(.secondary)
             if diffs.isEmpty {
-                Text("无变化")
+                Text(String(localized: "no_change", defaultValue: "无变化"))
                     .font(.callout)
                     .foregroundStyle(.secondary)
             } else {
@@ -631,13 +656,13 @@ private struct ParameterDiffRow: View {
                 Spacer()
             }
             VStack(alignment: .leading, spacing: 4) {
-                Text("当前值")
+                Text(String(localized: "current_value", defaultValue: "当前值"))
                     .font(.caption2)
                     .foregroundStyle(.secondary)
                 DiffTextView(segments: diff.valueSegments)
             }
             VStack(alignment: .leading, spacing: 4) {
-                Text("默认值")
+                Text(String(localized: "default_value", defaultValue: "默认值"))
                     .font(.caption2)
                     .foregroundStyle(.secondary)
                 DiffTextView(segments: diff.defaultValueSegments)
@@ -648,13 +673,13 @@ private struct ParameterDiffRow: View {
     private var statusText: String {
         switch diff.change {
         case .added:
-            return "新增"
+            return String(localized: "added", defaultValue: "新增")
         case .removed:
-            return "已移除"
+            return String(localized: "param_removed", defaultValue: "已移除")
         case .modified:
-            return "已更新"
+            return String(localized: "param_modified", defaultValue: "已更新")
         case .unchanged:
-            return "未变化"
+            return String(localized: "param_unchanged", defaultValue: "未变化")
         }
     }
 

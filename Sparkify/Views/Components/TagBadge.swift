@@ -11,8 +11,9 @@ struct TagBadge: View {
     let tag: String
 
     var body: some View {
+        let displayName = PromptTagPolicy.localizedDisplayName(for: tag)
         let style = TagPalette.style(for: tag)
-        Text(tag)
+        Text(displayName)
             .font(.caption.weight(.semibold))
             .padding(.horizontal, 10)
             .padding(.vertical, 4)

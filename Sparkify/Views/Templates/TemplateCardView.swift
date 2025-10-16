@@ -18,9 +18,9 @@ struct TemplateCardView: View {
         var label: String {
             switch self {
             case .template:
-                return "模板"
+                return String(localized: "template", defaultValue: "模板")
             case .preview:
-                return "预览"
+                return String(localized: "preview", defaultValue: "预览")
             }
         }
     }
@@ -226,7 +226,7 @@ struct TemplateCardView: View {
                         Image(systemName: "square.and.arrow.down")
                             .font(.system(size: 14, weight: .semibold))
                     }
-                    Text("覆写到文件")
+                    Text(String(localized: "overwrite_to_file", defaultValue: "覆写到文件"))
                         .font(.system(size: 14, weight: .semibold))
                         .fixedSize()
                 }
@@ -256,9 +256,9 @@ struct TemplateCardView: View {
             }
             .scaleEffect(isOverwriteHovered ? 1.04 : 1.0)
             .animation(interactionAnimation, value: isOverwriteHovered)
-            .help("将模板正文写回所有关联文件")
+            .help(String(localized: "write_back_to_all_files", defaultValue: "将模板正文写回所有关联文件"))
 
-            Button("与文件同步") {
+            Button(String(localized: "sync_with_file", defaultValue: "与文件同步")) {
                 synchronizeFromPrimaryAttachment()
             }
             .font(.system(size: 11, weight: .semibold))
@@ -289,7 +289,7 @@ struct TemplateCardView: View {
                         .offset(x: 18)
                 }
             }
-            .help("从首个关联文件读取内容并刷新模板正文")
+            .help(String(localized: "read_from_primary_file", defaultValue: "从首个关联文件读取内容并刷新模板正文"))
         }
     }
 
@@ -299,7 +299,7 @@ struct TemplateCardView: View {
             Button {
                 copyFilledPrompt()
             } label: {
-                Label("复制", systemImage: "doc.on.doc")
+                Label(String(localized: "copy", defaultValue: "复制"), systemImage: "doc.on.doc")
                     .font(.system(size: 14, weight: .semibold))
                     .fixedSize()
                     .padding(.horizontal, 16)
@@ -325,7 +325,7 @@ struct TemplateCardView: View {
             .animation(interactionAnimation, value: isCopyHovered)
             .keyboardShortcut("d", modifiers: .command)
 
-            Button("仅复制模板") {
+            Button(String(localized: "copy_template_only", defaultValue: "仅复制模板")) {
                 copyTemplateOnly()
             }
             .font(.system(size: 11, weight: .semibold))
@@ -377,22 +377,22 @@ struct TemplateCardView: View {
 
     private var contextMenuConfiguration: TemplateCardContextMenuBridge.Configuration {
         let snapshot = makeContextQuickActionSnapshot()
-        let title = prompt.title.isEmpty ? "未命名模板" : prompt.title
+        let title = prompt.title.isEmpty ? String(localized: "unnamed_template", defaultValue: "未命名模板") : prompt.title
         var actions: [TemplateCardContextMenuBridge.Configuration.Action] = [
             .init(
-                title: "编辑模板",
+                title: String(localized: "edit_template", defaultValue: "编辑模板"),
                 systemImageName: "rectangle.and.pencil.and.ellipsis"
             ) {
                 sendQuickAction(.openDetail(id: snapshot.id))
             },
             .init(
-                title: "复制",
+                title: String(localized: "copy", defaultValue: "复制"),
                 systemImageName: "square.and.pencil"
             ) {
                 sendQuickAction(.copyFilledPrompt(id: snapshot.id))
             },
             .init(
-                title: "仅复制模板",
+                title: String(localized: "copy_template_only", defaultValue: "仅复制模板"),
                 systemImageName: "doc.on.doc"
             ) {
                 sendQuickAction(.copyTemplateOnly(id: snapshot.id))
@@ -402,7 +402,7 @@ struct TemplateCardView: View {
         if isAgentContext {
             actions.append(
                 .init(
-                    title: "覆写到文件",
+                    title: String(localized: "overwrite_to_file", defaultValue: "覆写到文件"),
                     systemImageName: "square.and.arrow.down"
                 ) {
                     sendQuickAction(.overwriteAgentFiles(id: snapshot.id))
@@ -410,7 +410,7 @@ struct TemplateCardView: View {
             )
             actions.append(
                 .init(
-                    title: "与文件同步",
+                    title: String(localized: "sync_with_file", defaultValue: "与文件同步"),
                     systemImageName: "arrow.down.doc"
                 ) {
                     sendQuickAction(.syncAgentFromFile(id: snapshot.id))
@@ -420,7 +420,7 @@ struct TemplateCardView: View {
 
         actions.append(
             .init(
-                title: snapshot.isPinned ? "取消置顶" : "置顶此模板",
+                title: snapshot.isPinned ? String(localized: "unpin_template", defaultValue: "取消置顶") : String(localized: "pin_template", defaultValue: "置顶此模板"),
                 systemImageName: "pin"
             ) {
                 sendQuickAction(.togglePin(id: snapshot.id))
@@ -429,7 +429,7 @@ struct TemplateCardView: View {
 
         actions.append(
             .init(
-                title: "更改摘要…",
+                title: String(localized: "rename_summary", defaultValue: "更改摘要…"),
                 systemImageName: "text.badge.star"
             ) {
                 sendQuickAction(.rename(id: snapshot.id))
@@ -438,7 +438,7 @@ struct TemplateCardView: View {
 
         actions.append(
             .init(
-                title: "克隆模板",
+                title: String(localized: "clone_template", defaultValue: "克隆模板"),
                 systemImageName: "doc.on.doc"
             ) {
                 sendQuickAction(.clone(id: snapshot.id))
@@ -447,7 +447,7 @@ struct TemplateCardView: View {
 
         actions.append(
             .init(
-                title: "重置所有参数",
+                title: String(localized: "reset_all_params", defaultValue: "重置所有参数"),
                 systemImageName: "arrow.counterclockwise.circle"
             ) {
                 sendQuickAction(.resetAllParams(id: snapshot.id))
@@ -456,7 +456,7 @@ struct TemplateCardView: View {
 
         actions.append(
             .init(
-                title: "删除模板",
+                title: String(localized: "delete_prompt", defaultValue: "删除模板"),
                 systemImageName: "trash",
                 role: .destructive
             ) {
@@ -525,56 +525,55 @@ struct TemplateCardView: View {
         .onTapGesture(count: 2) {
             onOpenDetail()
         }
-        // .id(prompt.id)
         .overlay(
             TemplateCardContextMenuBridge(configuration: contextMenuConfiguration)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         )
         .id(prompt.id)
         .confirmationDialog(
-            "重置参数",
+            String(localized: "confirmation_reset_parameters", defaultValue: "重置参数"),
             isPresented: Binding(
                 get: { paramToReset != nil },
                 set: { if !$0 { paramToReset = nil } }
             ),
             presenting: paramToReset
         ) { param in
-            Button("重置为默认值", role: .destructive) {
+            Button(String(localized: "reset_to_default", defaultValue: "重置为默认值"), role: .destructive) {
                 resetParam(param)
             }
-            Button("取消", role: .cancel) {
+            Button(String(localized: "cancel", defaultValue: "取消"), role: .cancel) {
                 paramToReset = nil
             }
         } message: { param in
-            Text("确定要将参数 {\(param.key)} 重置为默认值吗？")
+            Text(String(format: String(localized: "reset_param_confirm", defaultValue: "确定要将参数 {%@} 重置为默认值吗？"), param.key))
         }
         .confirmationDialog(
-            "重置所有参数",
+            String(localized: "reset_all_params", defaultValue: "重置所有参数"),
             isPresented: $showResetAllConfirmation
         ) {
-            Button("重置所有参数", role: .destructive) {
+            Button(String(localized: "reset_all_params", defaultValue: "重置所有参数"), role: .destructive) {
                 resetAllParams()
             }
-            Button("取消", role: .cancel) {
+            Button(String(localized: "cancel", defaultValue: "取消"), role: .cancel) {
                 showResetAllConfirmation = false
             }
         } message: {
-            Text("确定要将所有 \(prompt.params.count) 个参数重置为默认值吗？此操作将覆盖所有当前值。")
+            Text(String(format: String(localized: "reset_all_params_confirm", defaultValue: "确定要将所有 %lld 个参数重置为默认值吗？此操作将覆盖所有当前值。"), prompt.params.count))
         }
         .confirmationDialog(
-            "删除模板",
+            String(localized: "delete_prompt", defaultValue: "删除模板"),
             isPresented: $showDeleteConfirmation,
             titleVisibility: .visible
         ) {
-            Button("删除", role: .destructive) {
+            Button(String(localized: "delete", defaultValue: "删除"), role: .destructive) {
                 onDelete(prompt)
                 showDeleteConfirmation = false
             }
-            Button("取消", role: .cancel) {
+            Button(String(localized: "cancel", defaultValue: "取消"), role: .cancel) {
                 showDeleteConfirmation = false
             }
         } message: {
-            Text("确定要删除「\(prompt.title.isEmpty ? "未命名模板" : prompt.title)」吗？此操作不可撤销。")
+            Text(String(format: String(localized: "delete_template_confirm", defaultValue: "确定要删除「%@」吗？此操作不可撤销。"), prompt.title.isEmpty ? String(localized: "unnamed_template", defaultValue: "未命名模板") : prompt.title))
         }
         .sheet(isPresented: $isShowingRenameSheet) {
             RenameSummarySheet(
@@ -600,10 +599,10 @@ struct TemplateCardView: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .top, spacing: 12) {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("摘要")
+                    Text(String(localized: "summary", defaultValue: "摘要"))
                         .font(.system(size: 11, weight: .semibold))
                         .foregroundStyle(Color.secondary)
-                    Text(prompt.title.isEmpty ? "未命名" : prompt.title)
+                    Text(prompt.title.isEmpty ? String(localized: "unnamed", defaultValue: "未命名") : prompt.title)
                         .font(.system(size: 18, weight: .medium))
                         .foregroundStyle(Color.appForeground.opacity(0.8))
                         .lineLimit(2)
@@ -629,7 +628,7 @@ struct TemplateCardView: View {
                     }
                     .scaleEffect(isPinHovered ? 1.04 : 1.0)
                     .animation(interactionAnimation, value: isPinHovered)
-                    .help(prompt.pinned ? "取消置顶" : "置顶")
+                    .help(prompt.pinned ? String(localized: "unpin") : String(localized: "pin"))
 
                     Button {
                         onOpenDetail()
@@ -649,7 +648,7 @@ struct TemplateCardView: View {
                     }
                     .scaleEffect(isEditHovered ? 1.04 : 1.0)
                     .animation(interactionAnimation, value: isEditHovered)
-                    .help("查看更多设置")
+                    .help(String(localized: "view_more_settings", defaultValue: "查看更多设置"))
 
                     Menu {
                         let snapshot = makeInlineQuickActionSnapshot()
@@ -666,7 +665,7 @@ struct TemplateCardView: View {
                     }
                     .menuStyle(.borderlessButton)
                     .menuIndicator(.hidden)
-                    .help("快捷操作")
+                    .help(String(localized: "quick_actions", defaultValue: "快捷操作"))
                 }
             }
 
@@ -684,7 +683,7 @@ struct TemplateCardView: View {
 
                 Spacer()
 
-                VStack(alignment: .center, spacing: isAgentContext ? 10 : 8) {
+                VStack(alignment: .trailing, spacing: isAgentContext ? 10 : 8) {
                     if isAgentContext {
                         HStack(alignment: .top, spacing: 6) {
                             agentFileActionColumn
@@ -694,13 +693,8 @@ struct TemplateCardView: View {
                         copyActionColumn
                     }
 
-                    if !renderResult.missingKeys.isEmpty {
-                        Text("待填写：\(renderResult.missingKeys.joined(separator: ", "))")
-                            .font(.system(size: 11))
-                            .foregroundStyle(Color.secondary)
-                            .multilineTextAlignment(.center)
-                    } else if isAgentContext, hasAgentAttachments {
-                        Text("关联文件：\(orderedAttachments.count) 个")
+                    if isAgentContext, hasAgentAttachments {
+                        Text(String(format: String(localized: "linked_files_count", defaultValue: "关联文件：%lld 个"), orderedAttachments.count))
                             .font(.system(size: 11))
                             .foregroundStyle(Color.secondary)
                             .frame(maxWidth: .infinity, alignment: .trailing)
@@ -713,12 +707,12 @@ struct TemplateCardView: View {
     private var parameterFields: some View {
         VStack(alignment: .leading, spacing: 12) {
             if prompt.params.isEmpty {
-                Text("此模板暂无参数，直接复制即可")
+                Text(String(localized: "no_params_copy_directly", defaultValue: "此模板暂无参数，直接复制即可"))
                     .font(.callout)
                     .foregroundStyle(.secondary)
             } else {
                 HStack(alignment: .center) {
-                    Text("参数")
+                    Text(String(localized: "parameters", defaultValue: "参数"))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                     Spacer()
@@ -728,7 +722,7 @@ struct TemplateCardView: View {
                         HStack(spacing: 4) {
                             Image(systemName: "arrow.counterclockwise.circle")
                                 .font(.system(size: 12, weight: .semibold))
-                            Text("重置所有")
+                            Text(String(localized: "reset_all", defaultValue: "重置所有"))
                                 .font(.system(size: 12, weight: .semibold))
                         }
                         .foregroundStyle(Color.appForeground.opacity(isResetAllHovered ? 0.9 : 0.7))
@@ -752,7 +746,7 @@ struct TemplateCardView: View {
                     }
                     .scaleEffect(isResetAllHovered ? 1.04 : 1.0)
                     .animation(interactionAnimation, value: isResetAllHovered)
-                    .help("将所有参数重置为默认值")
+                    .help(String(localized: "reset_all_params", defaultValue: "将所有参数重置为默认值"))
                 }
                 .padding(.bottom, 4)
 
@@ -774,7 +768,7 @@ struct TemplateCardView: View {
                                         .background(RoundedRectangle(cornerRadius: 8).fill(Color.neonYellow.opacity(0.4)))
                                         .foregroundStyle(Color.black)
 
-                                    Text("多行输入")
+                                    Text(String(localized: "multiline_input", defaultValue: "多行输入"))
                                         .font(.system(size: 10, weight: .medium))
                                         .foregroundStyle(Color.secondary)
                                         .padding(.horizontal, 6)
@@ -813,7 +807,7 @@ struct TemplateCardView: View {
                                     }
                                     .scaleEffect(hoveredResetParamID == paramModel.persistentModelID ? 1.08 : 1.0)
                                     .animation(interactionAnimation, value: hoveredResetParamID == paramModel.persistentModelID)
-                                    .help("重置为默认值")
+                                    .help(String(localized: "reset_to_default", defaultValue: "重置为默认值"))
                                 }
 
                                 TextEditor(text: binding(for: paramModel))
@@ -931,7 +925,7 @@ struct TemplateCardView: View {
                                 }
                                 .scaleEffect(hoveredResetParamID == paramModel.persistentModelID ? 1.08 : 1.0)
                                 .animation(interactionAnimation, value: hoveredResetParamID == paramModel.persistentModelID)
-                                .help("重置为默认值")
+                                .help(String(localized: "reset_to_default", defaultValue: "重置为默认值"))
                             }
                             .transition(.opacity)
                         }
@@ -979,7 +973,7 @@ struct TemplateCardView: View {
                             )
                     }
                     .buttonStyle(.plain)
-                    .help(isMarkdownPreview ? "切换到纯文本预览" : "切换到 Markdown 预览")
+                    .help(isMarkdownPreview ? String(localized: "switch_to_plain_text", defaultValue: "切换到纯文本预览") : String(localized: "switch_to_markdown", defaultValue: "切换到 Markdown 预览"))
                 }
 
                 Spacer()
@@ -990,7 +984,7 @@ struct TemplateCardView: View {
                 case .template:
                     let trimmed = prompt.body.trimmingCharacters(in: .whitespacesAndNewlines)
                     if trimmed.isEmpty {
-                        Text("模板内容为空")
+                        Text(String(localized: "empty_template_content", defaultValue: "模板内容为空"))
                             .font(.callout)
                             .foregroundStyle(.secondary)
                             .frame(maxWidth: .infinity, alignment: .leading)
@@ -1004,7 +998,7 @@ struct TemplateCardView: View {
                 case .preview:
                     if isMarkdownPreview {
                         if renderResult.rendered.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                            Text("预览内容为空")
+                            Text(String(localized: "empty_preview_content", defaultValue: "预览内容为空"))
                                 .font(.callout)
                                 .foregroundStyle(.secondary)
                                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -1141,7 +1135,7 @@ struct TemplateCardView: View {
             logDebug("persistChange() success")
         } catch {
             logDebug("persistChange() failed error=\(error)")
-            print("保存模板失败: \(error)")
+            print("Failed to save template: \(error)")
         }
     }
     
@@ -1250,7 +1244,7 @@ struct TemplateCardView: View {
         }
         .scaleEffect(isHovered ? 1.08 : 1.0)
         .animation(interactionAnimation, value: isHovered)
-        .help(isMultiline ? "切换到单行模式" : "切换到多行模式")
+        .help(isMultiline ? String(localized: "switch_to_single_line", defaultValue: "切换到单行模式") : String(localized: "switch_to_multiline", defaultValue: "切换到多行模式"))
     }
 
     private func draftValue(for param: ParamKV) -> String {
@@ -1539,14 +1533,14 @@ private struct RenameSummarySheet: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
             VStack(alignment: .leading, spacing: 6) {
-                Text("更改摘要")
+                Text(String(localized: "rename_summary_title", defaultValue: "更改摘要"))
                     .font(.title3.weight(.semibold))
-                Text("更新模板摘要会刷新最近修改时间。")
+                Text(String(localized: "rename_summary_description", defaultValue: "更新模板摘要会刷新最近修改时间。"))
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }
 
-            TextField("未命名模板", text: $title)
+            TextField(String(localized: "unnamed_template", defaultValue: "未命名模板"), text: $title)
                 .textFieldStyle(.roundedBorder)
                 .focused($isFieldFocused)
                 .onSubmit(onConfirm)
@@ -1555,8 +1549,8 @@ private struct RenameSummarySheet: View {
 
             HStack {
                 Spacer()
-                Button("取消", role: .cancel, action: onCancel)
-                Button("保存") {
+                Button(String(localized: "cancel", defaultValue: "取消"), role: .cancel, action: onCancel)
+                Button(String(localized: "save", defaultValue: "保存")) {
                     onConfirm()
                 }
                 .keyboardShortcut(.defaultAction)

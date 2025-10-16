@@ -15,9 +15,11 @@ struct SettingsView: View {
     @Query private var prompts: [PromptItem]
     
     @State private var preferences = PreferencesService.shared
+    @State private var localization = LocalizationService.shared
     @State private var showResetConfirmation = false
     @State private var showResetSuccess = false
     @State private var iconRefreshID = UUID()
+    @State private var showLanguageRestartAlert = false
     
     private var appVersion: String {
         Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
@@ -42,9 +44,28 @@ struct SettingsView: View {
             Form {
                 // MARK: - User Preferences
                 Section {
+                    // Language Picker
+                    VStack(alignment: .leading, spacing: 4) {
+                        Picker(String(localized: "current_language", defaultValue: "语言"), selection: $localization.currentLanguage) {
+                            ForEach(AppLanguage.allCases) { language in
+                                Text(language.displayName).tag(language)
+                            }
+                        }
+                        .pickerStyle(.menu)
+                        .onChange(of: localization.currentLanguage) { _, _ in
+                            if localization.requiresRestart {
+                                showLanguageRestartAlert = true
+                            }
+                        }
+                        
+                        Text(String(localized: "language_requires_restart", defaultValue: "语言更改将在重启应用后生效。"))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+
                     VStack(alignment: .leading, spacing: 4) {
                         HStack {
-                            TextField("签名", text: $preferences.userSignature)
+                            TextField(String(localized: "signature", defaultValue: "签名"), text: $preferences.userSignature)
                                 .textFieldStyle(.plain)
                             
                             Button {
@@ -55,15 +76,16 @@ struct SettingsView: View {
                             }
                             .buttonStyle(.plain)
                             .disabled(preferences.userSignature == NSUserName())
-                            .help("重置为系统用户名")
+                            .help(String(localized: "reset_to_system_username", defaultValue: "重置为系统用户名"))
                         }
                         
-                        Text("签名将作为版本历史的作者名称。默认使用系统用户名。")
+                        Text(String(localized: "signature_description", defaultValue: "签名将作为版本历史的作者名称。默认使用系统用户名。"))
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
+                
                 } header: {
-                    Text("个人设置")
+                    Text(String(localized: "general_settings", defaultValue: "通用设置"))
                 }
 
                 Section {
@@ -91,7 +113,7 @@ struct SettingsView: View {
                     }
                 } header: {
                     HStack {
-                        Text("Toolbox 快捷入口")
+                        Text(String(localized: "toolbox_quick_access", defaultValue: "Toolbox 快捷入口"))
                         Spacer()
                         Button {
                             clearIconCache()
@@ -101,25 +123,25 @@ struct SettingsView: View {
                                 .foregroundStyle(.secondary)
                         }
                         .buttonStyle(.plain)
-                        .help("清理图标缓存")
+                        .help(String(localized: "clear_icon_cache", defaultValue: "清理图标缓存"))
                     }
                 } footer: {
-                    Text("启用后，模板列表右下角会出现 toolbox 按钮，可快速打开所选的 AI 助手或网页。")
+                    Text(String(localized: "toolbox_description", defaultValue: "启用后，模板列表右下角会出现 toolbox 按钮，可快速打开所选的 AI 助手或网页。"))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
                 
                 // MARK: - About Section
-                Section("关于 Sparkify") {
+                Section(String(localized: "about_sparkify", defaultValue: "关于 Sparkify")) {
                     HStack {
-                        Text("版本")
+                        Text(String(localized: "version", defaultValue: "版本"))
                             .foregroundStyle(.secondary)
                         Spacer()
                         Text("\(appVersion) (\(buildNumber))")
                     }
                     
                     HStack {
-                        Text("当前模板数量")
+                        Text(String(localized: "current_template_count", defaultValue: "当前模板数量"))
                             .foregroundStyle(.secondary)
                         Spacer()
                         Text("\(prompts.count)")
@@ -132,7 +154,7 @@ struct SettingsView: View {
                         Button {
                             showResetConfirmation = true
                         } label: {
-                            Label("重置为默认模板", systemImage: "arrow.counterclockwise")
+                            Label(String(localized: "reset_to_default_templates", defaultValue: "重置为默认模板"), systemImage: "arrow.counterclockwise")
                                 .foregroundStyle(.orange)
                         }
                         
@@ -150,7 +172,7 @@ struct SettingsView: View {
                     } header: {
                         HStack {
                             Image(systemName: "ladybug")
-                            Text("开发者选项")
+                            Text(String(localized: "developer_options", defaultValue: "开发者选项"))
                         }
                         .foregroundStyle(.pink)
                     } footer: {
@@ -161,27 +183,32 @@ struct SettingsView: View {
                 }
             }
             .formStyle(.grouped)
-            .navigationTitle("设置")
+            .navigationTitle(String(localized: "settings", defaultValue: "设置"))
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("完成") {
+                    Button(String(localized: "done", defaultValue: "完成")) {
                         dismiss()
                     }
                     .keyboardShortcut(.defaultAction)
                 }
             }
-            .alert("重置为默认模板？", isPresented: $showResetConfirmation) {
-                Button("取消", role: .cancel) { }
-                Button("重置", role: .destructive) {
+            .alert(String(localized: "reset_to_default_templates", defaultValue: "重置为默认模板？"), isPresented: $showResetConfirmation) {
+                Button(String(localized: "cancel", defaultValue: "取消"), role: .cancel) { }
+                Button(String(localized: "reset", defaultValue: "重置"), role: .destructive) {
                     resetToSeedData()
                 }
             } message: {
-                Text("此操作将删除所有现有模板，并重新加载默认的种子数据。此操作不可撤销。")
+                Text(String(localized: "reset_to_default_templates_confirm", defaultValue: "此操作将删除所有现有模板，并重新加载默认的种子数据。此操作不可撤销。"))
             }
-            .alert("重置成功", isPresented: $showResetSuccess) {
-                Button("好") { }
+            .alert(String(localized: "reset_success", defaultValue: "重置成功"), isPresented: $showResetSuccess) {
+                Button(String(localized: "ok", defaultValue: "好")) { }
             } message: {
-                Text("已重置为默认模板")
+                Text(String(localized: "reset_success_message", defaultValue: "已重置为默认模板"))
+            }
+            .alert(String(localized: "settings", defaultValue: "设置"), isPresented: $showLanguageRestartAlert) {
+                Button(String(localized: "ok", defaultValue: "好")) { }
+            } message: {
+                Text(String(localized: "language_requires_restart", defaultValue: "语言更改将在重启应用后生效。"))
             }
         }
         .frame(minWidth: 500, minHeight: 400)
@@ -250,7 +277,9 @@ struct SettingsView: View {
 
 extension SettingsView {
     private var orderedToolboxApps: [ToolboxApp] {
-        preferences.toolboxOrder.compactMap { ToolboxApp.app(withID: $0) }
+        preferences.toolboxOrder
+            .compactMap { ToolboxApp.app(withID: $0) }
+            .filter { $0.isInstalled }
     }
 }
 
@@ -362,7 +391,7 @@ private struct ToolboxSettingsRow: View {
                 .foregroundStyle(Color.accentColor.opacity(0.8))
         }
         .buttonStyle(.plain)
-        .help("在浏览器中打开")
+        .help(String(localized: "open_in_browser", defaultValue: "在浏览器中打开"))
     }
 
     private var moveControls: some View {
@@ -393,7 +422,7 @@ private struct ToolboxSettingsRow: View {
         }
         .buttonStyle(.plain)
         .disabled(disabled)
-        .help(systemImage == "chevron.up" ? "上移" : "下移")
+        .help(systemImage == "chevron.up" ? String(localized: "move_up", defaultValue: "上移") : String(localized: "move_down", defaultValue: "下移"))
     }
 
     private func openWebLink() {

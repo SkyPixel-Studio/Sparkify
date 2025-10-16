@@ -51,6 +51,29 @@ final class ToolboxLauncher {
         }
     }
 
+    /// Check if an app is installed on the system (for native apps)
+    /// - Parameter app: The toolbox app to check
+    /// - Returns: true if the app is installed (or if it's a web app), false otherwise
+    func isAppInstalled(_ app: ToolboxApp) -> Bool {
+        switch app.optionKind {
+        case .web:
+            // Web apps are always "available"
+            return true
+        case .nativeApp:
+            // For native apps, check if we can locate the app and get its icon
+            guard case let .native(bundleID, _) = app.launchTarget else {
+                return false
+            }
+            // Try to get the app URL for this bundle ID
+            guard let appURL = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID) else {
+                return false
+            }
+            // Verify we can access the icon (icon not empty indicates valid app access)
+            let icon = NSWorkspace.shared.icon(forFile: appURL.path)
+            return icon.size.width > 0 && icon.size.height > 0
+        }
+    }
+
     func icon(for app: ToolboxApp, targetSize: CGSize = CGSize(width: 48, height: 48)) async -> NSImage? {
         if let cached = iconCache.object(forKey: app.id as NSString) {
             return cached

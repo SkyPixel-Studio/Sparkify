@@ -93,20 +93,20 @@ struct TemplateInlineQuickActionMenu: View {
     let onAction: (QuickAction) -> Void
 
     var body: some View {
-        Section("快捷操作") {
+        Section(String(localized: "quick_actions", defaultValue: "快捷操作")) {
             ForEach(primaryItems) { item in
                 actionButton(for: item)
             }
         }
 
-        Section("时间信息") {
+        Section(String(localized: "time_info", defaultValue: "时间信息")) {
             ForEach(infoItems) { info in
                 infoRow(info)
             }
         }
 
         if snapshot.tags.isEmpty == false {
-            Menu("快捷筛选") {
+            Menu(String(localized: "quick_filter", defaultValue: "快捷筛选")) {
                 ForEach(tagItems) { item in
                     actionButton(for: item)
                 }
@@ -114,7 +114,7 @@ struct TemplateInlineQuickActionMenu: View {
         }
 
         if snapshot.toolboxApps.isEmpty == false {
-            Menu("复制并打开Toolbox") {
+            Menu(String(localized: "copy_and_open_toolbox", defaultValue: "复制并打开Toolbox")) {
                 ForEach(toolboxItems) { item in
                     actionButton(for: item)
                 }
@@ -124,22 +124,22 @@ struct TemplateInlineQuickActionMenu: View {
 
     private var primaryItems: [ActionItem] {
         var actions: [ActionItem] = [
-            ActionItem(action: .openDetail(id: snapshot.id), title: "编辑模板", systemImage: "rectangle.and.pencil.and.ellipsis"),
-            ActionItem(action: .copyFilledPrompt(id: snapshot.id), title: "复制", systemImage: "square.and.pencil"),
-            ActionItem(action: .copyTemplateOnly(id: snapshot.id), title: "仅复制模板", systemImage: "doc.on.doc"),
-            ActionItem(action: .togglePin(id: snapshot.id), title: snapshot.isPinned ? "取消置顶" : "置顶此模板", systemImage: "pin"),
-            ActionItem(action: .rename(id: snapshot.id), title: "更改摘要…", systemImage: "text.badge.star"),
-            ActionItem(action: .clone(id: snapshot.id), title: "克隆模板", systemImage: "doc.on.doc"),
-            ActionItem(action: .resetAllParams(id: snapshot.id), title: "重置所有参数", systemImage: "arrow.counterclockwise.circle"),
-            ActionItem(action: .delete(id: snapshot.id), title: "删除模板", systemImage: "trash", role: .destructive)
+            ActionItem(action: .openDetail(id: snapshot.id), title: String(localized: "edit_template", defaultValue: "编辑模板"), systemImage: "rectangle.and.pencil.and.ellipsis"),
+            ActionItem(action: .copyFilledPrompt(id: snapshot.id), title: String(localized: "copy", defaultValue: "复制"), systemImage: "square.and.pencil"),
+            ActionItem(action: .copyTemplateOnly(id: snapshot.id), title: String(localized: "copy_template_only", defaultValue: "仅复制模板"), systemImage: "doc.on.doc"),
+            ActionItem(action: .togglePin(id: snapshot.id), title: snapshot.isPinned ? String(localized: "unpin_template", defaultValue: "取消置顶") : String(localized: "pin_template", defaultValue: "置顶此模板"), systemImage: "pin"),
+            ActionItem(action: .rename(id: snapshot.id), title: String(localized: "rename_summary", defaultValue: "更改摘要…"), systemImage: "text.badge.star"),
+            ActionItem(action: .clone(id: snapshot.id), title: String(localized: "clone_template", defaultValue: "克隆模板"), systemImage: "doc.on.doc"),
+            ActionItem(action: .resetAllParams(id: snapshot.id), title: String(localized: "reset_all_params", defaultValue: "重置所有参数"), systemImage: "arrow.counterclockwise.circle"),
+            ActionItem(action: .delete(id: snapshot.id), title: String(localized: "delete_prompt", defaultValue: "删除模板"), systemImage: "trash", role: .destructive)
         ]
         if snapshot.kind == .agentContext {
             actions.insert(
-                ActionItem(action: .overwriteAgentFiles(id: snapshot.id), title: "覆写到文件", systemImage: "square.and.arrow.down"),
+                ActionItem(action: .overwriteAgentFiles(id: snapshot.id), title: String(localized: "overwrite_to_file", defaultValue: "覆写到文件"), systemImage: "square.and.arrow.down"),
                 at: 3
             )
             actions.insert(
-                ActionItem(action: .syncAgentFromFile(id: snapshot.id), title: "与文件同步", systemImage: "arrow.down.doc"),
+                ActionItem(action: .syncAgentFromFile(id: snapshot.id), title: String(localized: "sync_with_file", defaultValue: "与文件同步"), systemImage: "arrow.down.doc"),
                 at: 4
             )
         }
@@ -150,7 +150,7 @@ struct TemplateInlineQuickActionMenu: View {
         snapshot.tags.map { tag in
             ActionItem(
                 action: .filterByTag(id: snapshot.id, tag: tag),
-                title: "显示同标签「\(tag)」的其他模板"
+                title: String(format: String(localized: "show_same_tag_templates", defaultValue: "显示同标签「%@」的其他模板"), PromptTagPolicy.localizedDisplayName(for: tag))
             )
         }
     }
@@ -167,8 +167,8 @@ struct TemplateInlineQuickActionMenu: View {
 
     private var infoItems: [InfoItem] {
         [
-            InfoItem(id: "created-\(snapshot.id)", text: "创建于 \(Self.formattedAbsoluteDate(snapshot.createdAt))"),
-            InfoItem(id: "updated-\(snapshot.id)", text: "最近更新 \(Self.formattedAbsoluteDate(snapshot.updatedAt))")
+            InfoItem(id: "created-\(snapshot.id)", text: String(format: String(localized: "created_at_format", defaultValue: "创建于 %@"), Self.formattedAbsoluteDate(snapshot.createdAt))),
+            InfoItem(id: "updated-\(snapshot.id)", text: String(format: String(localized: "recently_updated_format", defaultValue: "最近更新 %@"), Self.formattedAbsoluteDate(snapshot.updatedAt)))
         ]
     }
 

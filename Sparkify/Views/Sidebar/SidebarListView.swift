@@ -34,11 +34,11 @@ struct SidebarListView: View {
     private var sectionTitle: String {
         switch activeFilter {
         case .all:
-            return "模板"
+            return String(localized: "templates", defaultValue: "模板")
         case .pinned:
-            return "置顶的模板"
+            return String(localized: "pinned_templates", defaultValue: "置顶的模板")
         case let .tag(tagName):
-            return "标签「\(tagName)」的模板"
+            return String(format: String(localized: "templates_with_tag", defaultValue: "标签「%@」的模板"), tagName)
         }
     }
 
@@ -55,10 +55,10 @@ struct SidebarListView: View {
         List {
             Section {
                 HStack(spacing: 8) {
-                    FilterChip(title: "全部", isActive: activeFilter == .all) {
+                    FilterChip(title: String(localized: "all", defaultValue: "全部"), isActive: activeFilter == .all) {
                         activeFilter = .all
                     }
-                    FilterChip(title: "置顶", isActive: activeFilter == .pinned) {
+                    FilterChip(title: String(localized: "pin", defaultValue: "置顶"), isActive: activeFilter == .pinned) {
                         activeFilter = .pinned
                     }
                 }
@@ -70,7 +70,7 @@ struct SidebarListView: View {
 
             Section {
                 if displayedPrompts.isEmpty {
-                    Text("还没有模板，先新建一个吧")
+                    Text(String(localized: "no_templates_yet_create_one", defaultValue: "还没有模板，先新建一个吧"))
                         .foregroundStyle(.secondary)
                         .padding(.vertical, 8)
                 } else {
@@ -112,15 +112,15 @@ struct SidebarListView: View {
                     .padding(.bottom, 8)
                 
                 HStack(spacing: 12) {
-                    SidebarActionButton(title: "导入", action: onImport)
-                    SidebarActionButton(title: "导出", action: onExport)
+                    SidebarActionButton(title: String(localized: "import", defaultValue: "导入"), action: onImport)
+                    SidebarActionButton(title: String(localized: "export", defaultValue: "导出"), action: onExport)
                 }
                 .padding(.horizontal, 16)
                 
                 Button(action: onSettings) {
                     HStack {
                         Image(systemName: "gearshape")
-                        Text("设置")
+                        Text(String(localized: "settings", defaultValue: "设置"))
                     }
                     .font(.system(size: 13))
                     .foregroundStyle(.secondary)
@@ -140,13 +140,13 @@ struct SidebarListView: View {
         let now = Date()
         let delta = now.timeIntervalSince(date)
         if abs(delta) < 60 {
-            return "刚刚"
+            return String(localized: "just_now", defaultValue: "刚刚")
         }
         let formatted = SidebarListView.componentsFormatter.string(from: abs(delta)) ?? ""
         if formatted.isEmpty {
             return SidebarListView.relativeFormatter.localizedString(for: date, relativeTo: now)
         }
-        return delta >= 0 ? "\(formatted)前" : "\(formatted)后"
+        return delta >= 0 ? String(format: String(localized: "time_ago_format", defaultValue: "%@前"), formatted) : String(format: String(localized: "time_later_format", defaultValue: "%@后"), formatted)
     }
 
     private static let relativeFormatter: RelativeDateTimeFormatter = {
@@ -179,7 +179,7 @@ private struct SidebarPromptRow: View {
         Button(action: onSingleClick) {
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 6) {
-                    Text(prompt.title.isEmpty ? "未命名模板" : prompt.title)
+                    Text(prompt.title.isEmpty ? String(localized: "unnamed_template", defaultValue: "未命名模板") : prompt.title)
                         .font(.headline)
                         .foregroundStyle(Color.appForeground.opacity(isSelected ? 0.9 : 0.8))
                     if prompt.pinned {

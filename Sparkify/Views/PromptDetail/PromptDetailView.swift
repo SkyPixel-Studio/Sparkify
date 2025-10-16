@@ -34,12 +34,12 @@ struct PromptDetailView: View {
     private func attachmentStatus(for attachment: PromptFileAttachment) -> String {
         let syncText = formatTimestamp(attachment.lastSyncedAt)
         let overwriteText = formatTimestamp(attachment.lastOverwrittenAt)
-        return "同步：\(syncText) · 覆写：\(overwriteText)"
+        return String(format: String(localized: "sync_overwrite_format", defaultValue: "同步：%@ · 覆写：%@"), syncText, overwriteText)
     }
 
     private func formatTimestamp(_ date: Date?) -> String {
         guard let date else {
-            return "未执行"
+            return String(localized: "not_performed", defaultValue: "未执行")
         }
         return Self.timestampFormatter.string(from: date)
     }
@@ -76,9 +76,9 @@ struct PromptDetailView: View {
         var label: String {
             switch self {
             case .edit:
-                return "编辑"
+                return String(localized: "edit", defaultValue: "编辑")
             case .preview:
-                return "Markdown 预览"
+                return String(localized: "markdown_preview", defaultValue: "Markdown 预览")
             }
         }
     }
@@ -90,9 +90,9 @@ struct PromptDetailView: View {
         var label: String {
             switch self {
             case .editor:
-                return "编辑内容"
+                return String(localized: "edit_content", defaultValue: "编辑内容")
             case .history:
-                return "版本历史"
+                return String(localized: "version_history", defaultValue: "版本历史")
             }
         }
     }
@@ -125,11 +125,11 @@ struct PromptDetailView: View {
         .confirmationDialog(currentDialogTitle, isPresented: dialogPresentedBinding, titleVisibility: .visible) {
             switch pendingDialog {
             case .discardDraft:
-                Button("放弃修改", role: .destructive, action: dismissWithoutSaving)
-                Button("继续编辑", role: .cancel) {}
+                Button(String(localized: "discard_changes", defaultValue: "放弃修改"), role: .destructive, action: dismissWithoutSaving)
+                Button(String(localized: "continue_editing", defaultValue: "继续编辑"), role: .cancel) {}
             case .deletePrompt:
-                Button("删除模板", role: .destructive, action: deletePrompt)
-                Button("取消", role: .cancel) {}
+                Button(String(localized: "delete_prompt", defaultValue: "删除模板"), role: .destructive, action: deletePrompt)
+                Button(String(localized: "cancel", defaultValue: "取消"), role: .cancel) {}
             case .none:
                 EmptyView()
             }
@@ -142,7 +142,7 @@ struct PromptDetailView: View {
             Alert(
                 title: Text(alert.title),
                 message: Text(alert.message),
-                dismissButton: .default(Text("好"))
+                dismissButton: .default(Text(String(localized: "ok", defaultValue: "好")))
             )
         }
         .overlay(alignment: .top) {
@@ -157,10 +157,10 @@ struct PromptDetailView: View {
 
     private var header: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("模板摘要")
+            Text(String(localized: "template_summary", defaultValue: "模板摘要"))
                 .font(.caption)
                 .foregroundStyle(.secondary)
-            TextField("摘要", text: $draft.title, axis: .vertical)
+            TextField(String(localized: "summary", defaultValue: "摘要"), text: $draft.title, axis: .vertical)
                 .font(.system(size: 24, weight: .semibold, design: .rounded))
                 .focused($focusedField, equals: .title)
 
@@ -169,14 +169,14 @@ struct PromptDetailView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 Label {
-                    Text("最近更新 \(prompt.updatedAt, style: .relative)")
+                    Text(String(localized: "recently_updated_prefix", defaultValue: "最近更新")) + Text(" ") + Text(prompt.updatedAt, style: .relative)
                 } icon: {
                     Image(systemName: "clock")
                 }
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 Spacer()
-                FilterChip(title: draft.pinned ? "已置顶" : "未置顶", isActive: draft.pinned, tint: draft.pinned ? Color.neonYellow : nil) {
+                FilterChip(title: draft.pinned ? String(localized: "pinned", defaultValue: "已置顶") : String(localized: "not_pinned", defaultValue: "未置顶"), isActive: draft.pinned, tint: draft.pinned ? Color.neonYellow : nil) {
                     togglePinned()
                 }
             }
@@ -190,7 +190,7 @@ struct PromptDetailView: View {
 
     private var pagePicker: some View {
         HStack(alignment: .center, spacing: 0) {
-            Picker("内容视图", selection: $activePage) {
+            Picker(String(localized: "content_view_picker", defaultValue: "内容视图"), selection: $activePage) {
                 ForEach(DetailPage.allCases, id: \.self) { page in
                     Text(page.label).tag(page)
                 }
@@ -248,14 +248,14 @@ struct PromptDetailView: View {
     private var attachmentsSection: some View {
         VStack(alignment: .leading, spacing: 16) {
             HStack(spacing: 12) {
-                Text("关联文件")
+                Text(String(localized: "linked_files", defaultValue: "关联文件"))
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 Spacer()
                 Button {
                     addAgentContextFiles()
                 } label: {
-                    Label("添加文件…", systemImage: "plus")
+                    Label(String(localized: "add_files", defaultValue: "添加文件…"), systemImage: "plus")
                         .font(.system(size: 12, weight: .semibold))
                         .padding(.horizontal, 12)
                         .padding(.vertical, 6)
@@ -272,7 +272,7 @@ struct PromptDetailView: View {
             }
 
             if orderedAttachments.isEmpty {
-                Text("尚未关联文件。点击“添加文件…”选择一个或多个 Markdown 文件，支持按 ⌘⇧. 显示隐藏文件。")
+                Text(String(localized: "no_linked_files_hint", defaultValue: "尚未关联文件。点击\"添加文件…\"选择一个或多个 Markdown 文件，支持按 ⌘⇧. 显示隐藏文件。"))
                     .font(.footnote)
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -304,7 +304,7 @@ struct PromptDetailView: View {
                         Image(systemName: "square.and.arrow.down")
                             .font(.system(size: 13, weight: .semibold))
                     }
-                    Text("覆写到文件")
+                    Text(String(localized: "overwrite_to_file", defaultValue: "覆写到文件"))
                         .font(.system(size: 13, weight: .semibold))
                 }
                 .padding(.horizontal, 18)
@@ -331,7 +331,7 @@ struct PromptDetailView: View {
                         Image(systemName: "arrow.down.doc")
                             .font(.system(size: 13, weight: .semibold))
                     }
-                    Text("与文件同步")
+                    Text(String(localized: "sync_with_file", defaultValue: "与文件同步"))
                         .font(.system(size: 13, weight: .semibold))
                 }
                 .padding(.horizontal, 18)
@@ -361,7 +361,7 @@ struct PromptDetailView: View {
                             .font(.system(size: 15, weight: .semibold))
                             .foregroundStyle(Color.appForeground)
                         if attachment.persistentModelID == primaryAttachment?.persistentModelID {
-                            Text("主文件")
+                            Text(String(localized: "primary_file", defaultValue: "主文件"))
                                 .font(.caption2.weight(.bold))
                                 .padding(.horizontal, 6)
                                 .padding(.vertical, 3)
@@ -411,26 +411,26 @@ struct PromptDetailView: View {
                     .disabled(orderedAttachments.last?.persistentModelID == attachment.persistentModelID || hasAttachmentOperationInFlight)
 
                     Menu {
-                        Button("设为首要") {
+                        Button(String(localized: "set_as_primary", defaultValue: "设为首要")) {
                             makeAttachmentPrimary(attachment)
                         }
                         .disabled(primaryAttachment?.persistentModelID == attachment.persistentModelID || hasAttachmentOperationInFlight)
 
                         Divider()
 
-                        Button("仅从该文件同步") {
+                        Button(String(localized: "sync_from_this_file_only", defaultValue: "仅从该文件同步")) {
                             syncFromAttachment(attachment)
                         }
                         .disabled(hasAttachmentOperationInFlight)
 
-                        Button("仅覆写该文件") {
+                        Button(String(localized: "overwrite_single_file", defaultValue: "仅覆写该文件")) {
                             overwriteSingleAttachment(attachment)
                         }
                         .disabled(hasAttachmentOperationInFlight)
 
                         Divider()
 
-                        Button("移除附件", role: .destructive) {
+                        Button(String(localized: "remove_attachment", defaultValue: "移除附件"), role: .destructive) {
                             removeAttachment(attachment)
                         }
                     } label: {
@@ -463,11 +463,11 @@ struct PromptDetailView: View {
     private var bodyEditor: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .center) {
-                Text("正文模板")
+                Text(String(localized: "body_template", defaultValue: "正文模板"))
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 Spacer()
-                Picker("正文模式", selection: $bodyViewMode) {
+                Picker(String(localized: "body_mode_picker", defaultValue: "正文模式"), selection: $bodyViewMode) {
                     ForEach(BodyViewMode.allCases, id: \.self) { mode in
                         Text(mode.label).tag(mode)
                     }
@@ -494,7 +494,7 @@ struct PromptDetailView: View {
             } else {
                 ScrollView {
                     if draft.body.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                        Text("正文为空，暂无 Markdown 预览")
+                        Text(String(localized: "empty_body_no_markdown_preview", defaultValue: "正文为空，暂无 Markdown 预览"))
                             .font(.callout)
                             .foregroundStyle(.secondary)
                             .frame(maxWidth: .infinity, alignment: .leading)
@@ -528,7 +528,7 @@ struct PromptDetailView: View {
 
     private var tagsEditor: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("标签（逗号分隔）")
+            Text(String(localized: "tags_comma_separated", defaultValue: "标签（逗号分隔）"))
                 .font(.caption)
                 .foregroundStyle(.secondary)
             TextField("", text: Binding(
@@ -553,7 +553,7 @@ struct PromptDetailView: View {
             
             if recentTags.isEmpty == false {
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("最近使用的标签")
+                    Text(String(localized: "recent_tags", defaultValue: "最近使用的标签"))
                         .font(.caption2)
                         .foregroundStyle(.tertiary)
                     
@@ -587,16 +587,16 @@ struct PromptDetailView: View {
 
     private var parameterDefaultsEditor: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("参数默认值")
+            Text(String(localized: "parameter_defaults", defaultValue: "参数默认值"))
                 .font(.caption)
                 .foregroundStyle(.secondary)
-            Text("这里修改的值只影响模板默认配置，不会立即覆盖主页 Workspace 中的实时参数。")
+            Text(String(localized: "param_defaults_description", defaultValue: "这里修改的值只影响模板默认配置，不会立即覆盖主页 Workspace 中的实时参数。"))
                 .font(.footnote)
                 .foregroundStyle(.tertiary)
                 .fixedSize(horizontal: false, vertical: true)
 
             if draft.params.isEmpty {
-                Text("正文中的 {placeholder} 会自动同步到这里，方便为每个参数配置默认值。")
+                Text(String(localized: "param_defaults_empty", defaultValue: "正文中的 {placeholder} 会自动同步到这里，方便为每个参数配置默认值。"))
                     .font(.callout)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -608,13 +608,13 @@ struct PromptDetailView: View {
                                 .font(.system(size: 13, weight: .semibold, design: .monospaced))
                                 .foregroundStyle(Color.appForeground)
 
-                            TextField("默认值", text: Binding(
+                            TextField(String(localized: "default_value", defaultValue: "默认值"), text: Binding(
                                 get: { draft.params[index].defaultValue ?? "" },
                                 set: {
                                     let trimmedValue = $0.trimmingCharacters(in: .whitespacesAndNewlines)
                                     draft.params[index].defaultValue = trimmedValue.isEmpty ? nil : trimmedValue
                                 }
-                            ), prompt: Text("留空代表默认不填"))
+                            ), prompt: Text(String(localized: "empty_means_no_default", defaultValue: "留空代表默认不填")))
                             .textFieldStyle(.roundedBorder)
                             .font(.system(size: 14, weight: .regular, design: .monospaced))
 
@@ -644,7 +644,7 @@ struct PromptDetailView: View {
             Button(role: .destructive) {
                 attemptDelete()
             } label: {
-                Label("删除模板", systemImage: "trash")
+                Label(String(localized: "delete_prompt", defaultValue: "删除模板"), systemImage: "trash")
             }
             .buttonStyle(.bordered)
             .tint(.red)
@@ -652,7 +652,7 @@ struct PromptDetailView: View {
             Button {
                 togglePinned()
             } label: {
-                Label(draft.pinned ? "取消置顶" : "置顶", systemImage: draft.pinned ? "pin.slash" : "pin.fill")
+                Label(draft.pinned ? String(localized: "unpin", defaultValue: "取消置顶") : String(localized: "pin", defaultValue: "置顶"), systemImage: draft.pinned ? "pin.slash" : "pin.fill")
             }
             .buttonStyle(.bordered)
             .keyboardShortcut("b", modifiers: .command)
@@ -661,13 +661,13 @@ struct PromptDetailView: View {
 
             if isDirty {
                 HStack(spacing: 12) {
-                    Button("取消") {
+                    Button(String(localized: "cancel", defaultValue: "取消")) {
                         attemptCancel()
                     }
                     .keyboardShortcut(.escape, modifiers: [])
                     .buttonStyle(.bordered)
 
-                    Button("保存") {
+                    Button(String(localized: "save", defaultValue: "保存")) {
                         saveDraftAndDismiss()
                     }
                     .keyboardShortcut("s", modifiers: .command)
@@ -676,7 +676,7 @@ struct PromptDetailView: View {
                     .foregroundStyle(Color.black)
                 }
             } else {
-                Button("关闭") {
+                Button(String(localized: "close", defaultValue: "关闭")) {
                     dismissWithoutSaving()
                 }
                 .keyboardShortcut(.escape, modifiers: [])
@@ -699,10 +699,10 @@ struct PromptDetailView: View {
         let defaultValue = param.defaultValue?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         
         if defaultValue.isEmpty {
-            return "未设置默认值，在模板卡片使用时会高亮提示补全。"
+            return String(localized: "no_default_value_set", defaultValue: "未设置默认值，在模板卡片使用时会高亮提示补全。")
         }
         
-        return "默认值：\(defaultValue)"
+        return String(format: String(localized: "param_default_value", defaultValue: "默认值：%@"), defaultValue)
     }
 
     private func syncDraftParams() {
@@ -741,7 +741,7 @@ struct PromptDetailView: View {
             pendingDialog = nil
             dismiss()
         } catch {
-            print("保存模板失败: \(error)")
+            print("Failed to save template: \(error)")
         }
     }
 
@@ -828,9 +828,9 @@ struct PromptDetailView: View {
     private var currentDialogTitle: String {
         switch pendingDialog {
         case .discardDraft:
-            return "放弃修改？"
+            return String(localized: "discard_changes_title", defaultValue: "放弃修改？")
         case .deletePrompt:
-            return "删除模板？"
+            return String(localized: "delete_prompt_title", defaultValue: "删除模板？")
         case .none:
             return ""
         }
@@ -839,9 +839,9 @@ struct PromptDetailView: View {
     private var currentDialogMessage: String? {
         switch pendingDialog {
         case .discardDraft:
-            return "取消后当前缓冲的修改会丢失，确定要放弃吗？"
+            return String(localized: "discard_changes_message", defaultValue: "取消后当前缓冲的修改会丢失，确定要放弃吗？")
         case .deletePrompt:
-            return "此操作不可撤销，将永久删除该模板及其参数，确定要删除吗？"
+            return String(localized: "delete_prompt_message", defaultValue: "此操作不可撤销，将永久删除该模板及其参数，确定要删除吗？")
         case .none:
             return nil
         }
@@ -912,7 +912,7 @@ struct PromptDetailView: View {
             pendingDialog = nil
             dismiss()
         } catch {
-            print("删除模板失败: \(error)")
+            print("Failed to delete template: \(error)")
         }
     }
     
@@ -924,12 +924,12 @@ struct PromptDetailView: View {
                 try AgentContextFileService.shared.appendAttachments(urls, to: prompt)
                 normalizeAttachmentOrder()
                 saveContextAfterAttachmentChange(reason: "agentContext-add")
-                showAttachmentToast(message: "已关联 \(urls.count) 个文件", icon: "paperclip")
+                showAttachmentToast(message: String(format: String(localized: "files_associated", defaultValue: "已关联 %lld 个文件"), urls.count), icon: "paperclip")
             } catch AgentContextFileService.SelectionError.userCancelled {
                 // 用户取消，无需处理
             } catch {
                 attachmentAlert = AlertItem(
-                    title: "添加失败",
+                    title: String(localized: "add_file_failed", defaultValue: "添加失败"),
                     message: error.localizedDescription
                 )
             }
@@ -939,8 +939,8 @@ struct PromptDetailView: View {
     private func pushAgentBodyToFiles() {
         guard hasAgentAttachments else {
             attachmentAlert = AlertItem(
-                title: "没有可覆写的文件",
-                message: "请先添加需要同步的 Markdown 文件。"
+                title: String(localized: "no_files_to_overwrite", defaultValue: "没有可覆写的文件"),
+                message: String(localized: "add_markdown_files_first", defaultValue: "请先添加需要同步的 Markdown 文件。")
             )
             return
         }
@@ -955,13 +955,13 @@ struct PromptDetailView: View {
 
             let successCount = results.filter(\.isSuccess).count
             if successCount > 0 {
-                showAttachmentToast(message: "已覆写 \(successCount) 个文件", icon: "square.and.arrow.down")
+                showAttachmentToast(message: String(format: String(localized: "overwrite_success", defaultValue: "已覆写 %lld 个文件"), successCount), icon: "square.and.arrow.down")
             }
 
             if let failure = results.first(where: { $0.isSuccess == false }),
                let error = failure.error {
                 attachmentAlert = AlertItem(
-                    title: "覆写失败",
+                    title: String(localized: "overwrite_failed", defaultValue: "覆写失败"),
                     message: error.localizedDescription
                 )
             }
@@ -971,8 +971,8 @@ struct PromptDetailView: View {
     private func syncAgentBodyFromFile() {
         guard let attachment = primaryAttachment else {
             attachmentAlert = AlertItem(
-                title: "无法同步",
-                message: "请先在附件列表中添加并排序至少一个文件。"
+                title: String(localized: "cannot_sync", defaultValue: "无法同步"),
+                message: String(localized: "add_file_before_sync", defaultValue: "请先在附件列表中添加并排序至少一个文件。")
             )
             return
         }
@@ -985,7 +985,7 @@ struct PromptDetailView: View {
             if let error = result.error {
                 saveContextAfterAttachmentChange(reason: "agentContext-syncPrimary-error")
                 attachmentAlert = AlertItem(
-                    title: "同步失败",
+                    title: String(localized: "sync_failed", defaultValue: "同步失败"),
                     message: error.localizedDescription
                 )
                 return
@@ -995,7 +995,7 @@ struct PromptDetailView: View {
             draft.body = newBody
             syncDraftParams()
             if commitDraftForAgentOperation() {
-                showAttachmentToast(message: "已从「\(attachment.displayName)」同步", icon: "arrow.down.doc")
+                showAttachmentToast(message: String(format: String(localized: "sync_from_file", defaultValue: "已从「%@」同步"), attachment.displayName), icon: "arrow.down.doc")
             }
         }
     }
@@ -1011,10 +1011,10 @@ struct PromptDetailView: View {
             saveContextAfterAttachmentChange(reason: "agentContext-pushSingle")
 
             if let result, result.isSuccess {
-                showAttachmentToast(message: "已覆写「\(attachment.displayName)」", icon: "square.and.arrow.down")
+                showAttachmentToast(message: String(format: String(localized: "overwritten_file", defaultValue: "已覆写「%@」"), attachment.displayName), icon: "square.and.arrow.down")
             } else if let error = result?.error {
                 attachmentAlert = AlertItem(
-                    title: "\(attachment.displayName) 覆写失败",
+                    title: String(format: String(localized: "file_overwrite_failed", defaultValue: "%@ 覆写失败"), attachment.displayName),
                     message: error.localizedDescription
                 )
             }
@@ -1031,7 +1031,7 @@ struct PromptDetailView: View {
             if let error = result.error {
                 saveContextAfterAttachmentChange(reason: "agentContext-syncSingle-error")
                 attachmentAlert = AlertItem(
-                    title: "\(attachment.displayName) 同步失败",
+                    title: String(format: String(localized: "file_sync_failed", defaultValue: "%@ 同步失败"), attachment.displayName),
                     message: error.localizedDescription
                 )
                 return
@@ -1041,7 +1041,7 @@ struct PromptDetailView: View {
             draft.body = newBody
             syncDraftParams()
             if commitDraftForAgentOperation() {
-                showAttachmentToast(message: "已从「\(attachment.displayName)」同步", icon: "arrow.down.doc")
+                showAttachmentToast(message: String(format: String(localized: "sync_from_file", defaultValue: "已从「%@」同步"), attachment.displayName), icon: "arrow.down.doc")
             }
         }
     }
@@ -1077,7 +1077,7 @@ struct PromptDetailView: View {
         prompt.attachments.removeAll { $0.persistentModelID == attachment.persistentModelID }
         normalizeAttachmentOrder()
         saveContextAfterAttachmentChange(reason: "agentContext-remove")
-        showAttachmentToast(message: "已移除「\(attachment.displayName)」", icon: "trash")
+        showAttachmentToast(message: String(format: String(localized: "removed_attachment", defaultValue: "已移除「%@」"), attachment.displayName), icon: "trash")
     }
 
     private func normalizeAttachmentOrder() {
@@ -1101,7 +1101,7 @@ struct PromptDetailView: View {
             return true
         } catch {
             attachmentAlert = AlertItem(
-                title: "保存失败",
+                title: String(localized: "save_failure", defaultValue: "保存失败"),
                 message: error.localizedDescription
             )
             return false
@@ -1113,7 +1113,7 @@ struct PromptDetailView: View {
             try modelContext.save()
         } catch {
             attachmentAlert = AlertItem(
-                title: "保存失败",
+                title: String(localized: "save_failure", defaultValue: "保存失败"),
                 message: error.localizedDescription
             )
         }

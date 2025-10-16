@@ -34,8 +34,22 @@ struct SeedDataLoader {
         // 标记已完成初始化
         UserDefaults.standard.set(true, forKey: hasSeededKey)
     }
+    
+    /// Detect system language preference
+    private static var isChineseLocale: Bool {
+        if let languageCode = Locale.current.language.languageCode?.identifier {
+            return languageCode.hasPrefix("zh")
+        }
+        return false
+    }
 
     private static func defaultItems() -> [PromptItem] {
+        isChineseLocale ? defaultItemsChinese() : defaultItemsEnglish()
+    }
+    
+    // MARK: - Chinese Seed Data
+    
+    private static func defaultItemsChinese() -> [PromptItem] {
         [
             PromptItem(
                 title: "欢迎使用 Sparkify",
@@ -110,7 +124,90 @@ struct SeedDataLoader {
                 tags: ["示例", "入门", "一页纸", "总结"],
                 params: [
                     ParamKV(key: "tone", value: "简洁专业"),
-                    ParamKV(key: "content", value: "（在此粘贴要总结的原始内容）")
+                    ParamKV(key: "content", value: "")
+                ]
+            )
+        ]
+    }
+    
+    // MARK: - English Seed Data
+    
+    private static func defaultItemsEnglish() -> [PromptItem] {
+        [
+            PromptItem(
+                title: "Welcome to Sparkify",
+                body: """
+                Hello! Welcome to Sparkify.
+
+                This is a tool designed for prompt engineers and deep LLM users like you, aimed at elevating your prompt management to new heights. Forget about scattered notes—here, your inspiration will be organized and ready to use with a single click.
+
+                **Core Usage in 3 Steps**:
+                1. Create Templates: Click the + button in the top right to start writing your first prompt template.
+                2. Define Parameters: In your prompt, use {} to wrap any variables you want to dynamically fill (use English variable names), such as {topic} or {style}. Sparkify will automatically recognize them and generate dedicated input fields for you.
+                3. Use & Copy: Return to this workspace, find your template, and fill in the specific content in the parameter boxes below. Once filled, click the black "Copy" button, and a complete, ready-to-use prompt will be prepared. Paste it into your LLM tool and start creating!
+
+                **Tips**:
+                - The list on the left helps you quickly switch and manage all templates.
+                - You can tag templates for easier filtering and searching later.
+
+                Now, try creating your first template, or feel free to modify this welcome guide. Have fun!
+                """,
+                pinned: true,
+                tags: ["Welcome", "Getting Started"],
+                params: [
+                    ParamKV(key: "topic", value: ""),
+                    ParamKV(key: "style", value: "")
+                ]
+            ),
+            PromptItem(
+                title: "Example · Lightning Summary",
+                body: """
+                Please read the following source material and output a **one-page Chinese summary** in a {tone} tone. Only output Markdown following the template below, without any additional explanations or preamble.
+
+                # Title (≤12 characters)
+                Automatically extract the theme and subject from the material
+
+                ## TL;DR (≤60 characters)
+                One-sentence condensed conclusion
+
+                ## Key Points (max 5 items, each ≤24 characters)
+                1. …
+                2. …
+                3. …
+                4. …
+                5. …
+
+                ## Data & Evidence (max 3 items)
+                - Name: Value (Time/Source)
+                - Name: Value (Time/Source)
+                - Name: Value (Time/Source)
+
+                ## Conclusion & Impact (≤2 items)
+                - …
+                - …
+
+                ## Action Items (≤3 items | Format: Action — Owner — Deadline — Priority)
+                - …
+                - …
+                - …
+
+                ## Outstanding / Risks (≤2 items)
+                - …
+
+                > Rules:
+                > - Facts first, then judgment; reject empty talk and padding.
+                > - If the material is insufficient, raise 1 most critical clarification question in the first item of "Outstanding / Risks".
+                > - All sections presented in concise sentences; write "Not mentioned" when no data available.
+
+                —— Source Material Begins ——
+                {content}
+                —— Source Material Ends ——
+                """,
+                pinned: true,
+                tags: ["Example", "Getting Started", "One-Page", "Summary"],
+                params: [
+                    ParamKV(key: "tone", value: "concise and professional"),
+                    ParamKV(key: "content", value: "")
                 ]
             )
         ]

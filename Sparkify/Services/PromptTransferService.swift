@@ -241,9 +241,9 @@ enum PromptTransferError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .invalidFormat:
-            return "JSON 格式无法识别，请确认文件是否由 Sparkify 导出。"
+            return String(localized: "import_failure_reason_invalid_format", defaultValue: "JSON 格式无法识别，请确认文件是否由 Sparkify 导出。")
         case .unsupportedVersion(let version):
-            return "暂不支持导入来自版本 \(version) 的导出文件，请更新 Sparkify。"
+            return String(format: String(localized: "import_failure_reason_unsupported_version", defaultValue: "暂不支持导入来自版本 %d 的导出文件，请更新 Sparkify。"), version)
         }
     }
 

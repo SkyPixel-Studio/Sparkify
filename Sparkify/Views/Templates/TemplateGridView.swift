@@ -8,10 +8,21 @@
 import SwiftUI
 
 enum PromptSortMode: String, CaseIterable {
-    case alphabetical = "摘要排序"
-    case timeCreated = "创建时间"
-    case timeUpdated = "更新时间"
-    
+    case alphabetical
+    case timeCreated
+    case timeUpdated
+
+    var displayName: String {
+        switch self {
+        case .alphabetical:
+            return String(localized: "alphabetical_sort", defaultValue: "摘要排序")
+        case .timeCreated:
+            return String(localized: "created_time_sort", defaultValue: "创建时间")
+        case .timeUpdated:
+            return String(localized: "updated_time_sort", defaultValue: "更新时间")
+        }
+    }
+
     var iconName: String {
         switch self {
         case .alphabetical: return "textformat.abc"
@@ -83,7 +94,10 @@ struct TemplateGridView: View {
     }
 
     private var enabledToolboxApps: [ToolboxApp] {
-        ToolboxApp.all.filter { preferences.enabledToolboxAppIDs.contains($0.id) }
+        preferences.toolboxOrder
+            .compactMap { ToolboxApp.app(withID: $0) }
+            .filter { preferences.enabledToolboxAppIDs.contains($0.id) }
+            .filter { $0.isInstalled }
     }
 
     private var shouldShowToolbox: Bool {
@@ -109,14 +123,14 @@ struct TemplateGridView: View {
             }
         }
         .background(Color.appBackground)
-        .searchable(text: $searchText, isPresented: $searchPresented, placement: .toolbar, prompt: "搜索模板")
+        .searchable(text: $searchText, isPresented: $searchPresented, placement: .toolbar, prompt: String(localized: "search_templates", defaultValue: "搜索模板"))
         .background(DoubleShiftToSearch { searchPresented = true })
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Menu {
-                    Button("新建普通模板", action: onAddPrompt)
+                    Button(String(localized: "new_template_button", defaultValue: "新建普通模板"), action: onAddPrompt)
                         .keyboardShortcut("n", modifiers: .command)
-                    Button("新建代理上下文模板…", action: onAddAgentContextPrompt)
+                    Button(String(localized: "new_agent_context_template", defaultValue: "新建代理上下文模板…"), action: onAddAgentContextPrompt)
                         .keyboardShortcut("n", modifiers: [
                             .command,
                             .shift
@@ -276,9 +290,9 @@ private struct TagFilterMenu: View {
 
     private var selectedTagLabel: String {
         if case let .tag(tag) = activeFilter {
-            return tag
+            return PromptTagPolicy.localizedDisplayName(for: tag)
         }
-        return "标签筛选"
+        return ""
     }
 
     private var currentStyle: TagStyle? {
@@ -290,24 +304,25 @@ private struct TagFilterMenu: View {
 
     var body: some View {
         Menu {
-            Button("所有标签") { onSelectFilter(.all) }
+            Button(String(localized: "all_tags", defaultValue: "所有标签")) { onSelectFilter(.all) }
                 .disabled(activeFilter == .all)
 
             if availableTags.isEmpty == false {
-                Section("选择标签") {
+                Section(String(localized: "select_tags", defaultValue: "选择标签")) {
                     ForEach(availableTags, id: \.self) { tag in
                         let style = TagPalette.style(for: tag)
+                        let displayName = PromptTagPolicy.localizedDisplayName(for: tag)
                         Button {
                             onSelectFilter(.tag(tag))
                         } label: {
-                            menuLabel(text: tag, isSelected: isCurrent(tag))
+                            menuLabel(text: displayName, isSelected: isCurrent(tag))
                         }
                         .tint(style.foreground)
                     }
                 }
             }
         } label: {
-            Label(selectedTagLabel, systemImage: "tag")
+            Label(selectedTagLabel.isEmpty ? String(localized: "tag_filter", defaultValue: "标签筛选") : selectedTagLabel, systemImage: "tag")
                 .font(.system(size: 13, weight: .semibold))
                 .padding(.horizontal, 12)
                 .padding(.vertical, 6)
@@ -357,7 +372,7 @@ private struct SortModeMenu: View {
                     onSelectMode(mode)
                 } label: {
                     Label {
-                        Text(mode.rawValue)
+                        Text(mode.displayName)
                     } icon: {
                         if mode == currentMode {
                             Image(systemName: "checkmark")
@@ -366,7 +381,7 @@ private struct SortModeMenu: View {
                 }
             }
         } label: {
-            Label(currentMode.rawValue, systemImage: currentMode.iconName)
+            Label(currentMode.displayName, systemImage: currentMode.iconName)
                 .font(.system(size: 13, weight: .semibold))
                 .padding(.horizontal, 12)
                 .padding(.vertical, 6)
@@ -400,13 +415,14 @@ private struct TemplateEmptyStateView: View {
         var parts: [String] = []
         
         if case let .tag(tag) = activeFilter {
-            parts.append("标签「\(tag)」")
+            let displayName = PromptTagPolicy.localizedDisplayName(for: tag)
+            parts.append(String(format: String(localized: "filter_by_tag", defaultValue: "标签「%@」"), displayName))
         } else if case .pinned = activeFilter {
-            parts.append("置顶")
+            parts.append(String(localized: "filter_pinned", defaultValue: "置顶"))
         }
         
         if !searchText.isEmpty {
-            parts.append("搜索「\(searchText)」")
+            parts.append(String(format: String(localized: "filter_search", defaultValue: "搜索「%@」"), searchText))
         }
         
         return parts.joined(separator: " + ")
@@ -420,32 +436,32 @@ private struct TemplateEmptyStateView: View {
 
             if isFiltered {
                 // Filtered empty state
-                Text("当前条件下没有模板")
+                Text(String(localized: "no_templates_in_filter", defaultValue: "当前条件下没有模板"))
                     .font(.title3.weight(.semibold))
-                Text("筛选条件：\(filterDescription)")
+                Text(String(format: String(localized: "filter_description", defaultValue: "筛选条件：%@"), filterDescription))
                     .font(.callout)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
                     .frame(maxWidth: 360)
 
                 TemplateActionButton(
-                    title: "清空筛选条件",
+                    title: String(localized: "clear_filters", defaultValue: "清空筛选条件"),
                     systemImage: "xmark.circle",
                     action: onClearFilters
                 )
             } else {
                 // Truly empty state
-                Text("还没有模板哦")
+                Text(String(localized: "empty_state_no_templates", defaultValue: "还没有模板哦"))
                     .font(.title3.weight(.semibold))
-                Text("先新建一个模板，或者导入 JSON，马上开始复用你的提示词。")
+                Text(String(localized: "empty_state_create_or_import", defaultValue: "先新建一个模板，或者导入 JSON，马上开始复用你的提示词。"))
                     .font(.callout)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
                     .frame(maxWidth: 320)
 
                 HStack(spacing: 12) {
-                    TemplateActionButton(title: "新建模板", systemImage: "plus.circle.fill", action: onAddPrompt)
-                    TemplateActionButton(title: "导入 JSON", systemImage: "square.and.arrow.down", action: onImport)
+                    TemplateActionButton(title: String(localized: "new_template", defaultValue: "新建模板"), systemImage: "plus.circle.fill", action: onAddPrompt)
+                    TemplateActionButton(title: String(localized: "import_json", defaultValue: "导入 JSON"), systemImage: "square.and.arrow.down", action: onImport)
                 }
             }
         }

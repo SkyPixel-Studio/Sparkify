@@ -9,7 +9,7 @@ import SwiftUI
 
 struct CopiedHUDView: View {
     var body: some View {
-        Label("已复制", systemImage: "checkmark.circle.fill")
+        Label(String(localized: "copied", defaultValue: "已复制"), systemImage: "checkmark.circle.fill")
             .font(.system(size: 15, weight: .semibold))
             .padding(.vertical, 8)
             .padding(.horizontal, 16)

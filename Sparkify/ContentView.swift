@@ -126,11 +126,11 @@ struct ContentView: View {
         ) { result in
             if case let .failure(error) = result {
                 alertItem = AlertItem(
-                    title: "导出失败",
+                    title: String(localized: "export_failure", defaultValue: "导出失败"),
                     message: "无法写入文件，请检查权限或磁盘空间。\n\(error.localizedDescription)"
                 )
             } else {
-                showToast(message: "导出成功", icon: "arrow.up.doc")
+                showToast(message: String(localized: "export_success", defaultValue: "导出成功"), icon: "arrow.up.doc")
             }
         }
         .fileImporter(
@@ -144,7 +144,7 @@ struct ContentView: View {
                 handleImport(from: url)
             case let .failure(error):
                 alertItem = AlertItem(
-                    title: "导入失败",
+                    title: String(localized: "import_failure", defaultValue: "导入失败"),
                     message: "无法读取文件：\(error.localizedDescription)"
                 )
             }
@@ -153,25 +153,25 @@ struct ContentView: View {
             Alert(
                 title: Text(alert.title),
                 message: Text(alert.message),
-                dismissButton: .default(Text("好"))
+                dismissButton: .default(Text(String(localized: "ok", defaultValue: "好")))
             )
         }
-        .alert("导出提示", isPresented: $showAgentContextExportWarning) {
-            Button("继续导出") {
+        .alert(String(localized: "export_hint", defaultValue: "导出提示"), isPresented: $showAgentContextExportWarning) {
+            Button(String(localized: "continue_export", defaultValue: "继续导出")) {
                 performExport()
             }
-            Button("取消", role: .cancel) { }
+            Button(String(localized: "cancel", defaultValue: "取消"), role: .cancel) { }
         } message: {
-            Text("检测到代理上下文模板。这类模板的文件关联信息不会被导出，重新导入后需要重新关联本地文件。")
+            Text(String(localized: "agent_context_export_warning", defaultValue: "检测到代理上下文模板。这类模板的文件关联信息不会被导出，重新导入后需要重新关联本地文件。"))
         }
-        .alert("关于代理上下文模板", isPresented: $showAgentContextInfoAlert) {
-            Button("继续，下次不再提醒") {
+        .alert(String(localized: "agent_context_info_alert_title", defaultValue: "关于代理上下文模板"), isPresented: $showAgentContextInfoAlert) {
+            Button(String(localized: "continue_dont_remind", defaultValue: "继续，下次不再提醒")) {
                 PreferencesService.shared.showAgentContextInfoAlert = false
                 proceedWithAgentContextSelection()
             }
-            Button("取消", role: .cancel) { }
+            Button(String(localized: "cancel", defaultValue: "取消"), role: .cancel) { }
         } message: {
-            Text("代理上下文模板是适用于 Codex、Claude Code 等命令行代理的系统指令文档，储存于文件中。\n\n选取对应文件后，您可以在 Sparkify 内统一管理这些模板。")
+            Text(String(localized: "agent_context_info_alert_message", defaultValue: "代理上下文模板是适用于 Codex、Claude Code 等命令行代理的系统指令文档，储存于文件中。\n\n选取对应文件后，您可以在 Sparkify 内统一管理这些模板。"))
         }
         .overlay(alignment: .top) {
             if let toast = operationToast {
@@ -190,7 +190,7 @@ struct ContentView: View {
             }
             
             let newPrompt = PromptItem(
-                title: "新模板",
+                title: String(localized: "new_template", defaultValue: "新模板"),
                 body: "",
                 tags: initialTags
             )
@@ -220,7 +220,7 @@ struct ContentView: View {
                 let attachments = try AgentContextFileService.shared.makeAttachments(from: urls)
                 guard let primaryAttachment = attachments.first else {
                     presentAlert(
-                        title: "无法创建模板",
+                        title: String(localized: "create_template_failure", defaultValue: "无法创建模板"),
                         message: "未检测到有效的 Markdown 文件，请重新选择。"
                     )
                     return
@@ -229,7 +229,7 @@ struct ContentView: View {
                 let pullResult = AgentContextFileService.shared.pullContent(from: primaryAttachment)
                 if let error = pullResult.error {
                     presentAlert(
-                        title: "导入失败",
+                        title: String(localized: "import_failure", defaultValue: "导入失败"),
                         message: error.localizedDescription
                     )
                     return
@@ -243,7 +243,7 @@ struct ContentView: View {
 
                 let suggestedTitle = urls.first?.deletingPathExtension().lastPathComponent ?? primaryAttachment.displayName
                 let newPrompt = PromptItem(
-                    title: suggestedTitle.isEmpty ? "代理上下文模板" : suggestedTitle,
+                    title: suggestedTitle.isEmpty ? String(localized: "new_agent_context_template", defaultValue: "代理上下文模板") : suggestedTitle,
                     body: initialBody,
                     tags: initialTags,
                     attachments: attachments,
@@ -253,10 +253,10 @@ struct ContentView: View {
                 presentedPrompt = newPrompt
                 do {
                     try modelContext.save()
-                    showToast(message: "已创建代理上下文模板", icon: "doc.badge.plus")
+                    showToast(message: String(localized: "created_agent_context", defaultValue: "已创建代理上下文模板"), icon: "doc.badge.plus")
                 } catch {
                     presentAlert(
-                        title: "保存失败",
+                        title: String(localized: "save_failure", defaultValue: "保存失败"),
                         message: error.localizedDescription
                     )
                 }
@@ -264,7 +264,7 @@ struct ContentView: View {
                 // 用户取消选择，忽略
             } catch {
                 presentAlert(
-                    title: "无法创建模板",
+                    title: String(localized: "create_template_failure", defaultValue: "无法创建模板"),
                     message: error.localizedDescription
                 )
             }
@@ -272,7 +272,7 @@ struct ContentView: View {
     }
 
     private func deletePrompt(_ prompt: PromptItem) {
-        let displayName = prompt.title.isEmpty ? "未命名模板" : prompt.title
+        let displayName = prompt.title.isEmpty ? String(localized: "unnamed_template", defaultValue: "未命名模板") : prompt.title
         if presentedPrompt?.persistentModelID == prompt.persistentModelID {
             presentedPrompt = nil
         }
@@ -280,7 +280,7 @@ struct ContentView: View {
         deletePrompts([prompt])
         guard modelContext.hasChanges == false else { return }
         showToast(
-            message: "已删除 \(displayName)",
+            message: String(format: String(localized: "delete_prompt_success", defaultValue: "已删除 %@"), displayName),
             icon: "trash.fill"
         )
     }
@@ -298,7 +298,7 @@ struct ContentView: View {
     }
 
     private func clonePrompt(_ prompt: PromptItem) {
-        let baseTitle = prompt.title.isEmpty ? "未命名模板" : prompt.title
+        let baseTitle = prompt.title.isEmpty ? String(localized: "unnamed_template", defaultValue: "未命名模板") : prompt.title
         let paramsCopy = prompt.params.map { param in
             ParamKV(
                 key: param.key,
@@ -322,7 +322,7 @@ struct ContentView: View {
         do {
             try modelContext.save()
             showToast(
-                message: "已克隆 \(baseTitle)",
+                message: String(format: String(localized: "clone_prompt_success", defaultValue: "已克隆 %@"), baseTitle),
                 icon: "doc.on.doc.fill"
             )
         } catch {
@@ -350,8 +350,8 @@ struct ContentView: View {
     private func prepareExport() {
         guard prompts.isEmpty == false else {
             alertItem = AlertItem(
-                title: "没有可导出的模板",
-                message: "先创建或导入一些模板，再尝试导出吧。"
+                title: String(localized: "no_exportable_templates", defaultValue: "没有可导出的模板"),
+                message: String(localized: "no_exportable_templates_message", defaultValue: "先创建或导入一些模板，再尝试导出吧。")
             )
             return
         }
@@ -373,7 +373,7 @@ struct ContentView: View {
             isExporting = true
         } catch {
             alertItem = AlertItem(
-                title: "导出失败",
+                title: String(localized: "export_failure", defaultValue: "导出失败"),
                 message: "无法生成导出文件：\(error.localizedDescription)"
             )
         }
@@ -383,7 +383,7 @@ struct ContentView: View {
         // 获取安全范围资源访问权限
         guard url.startAccessingSecurityScopedResource() else {
             alertItem = AlertItem(
-                title: "导入失败",
+                title: String(localized: "import_failure", defaultValue: "导入失败"),
                 message: "无法访问选定的文件，请检查文件权限。"
             )
             return
@@ -400,17 +400,17 @@ struct ContentView: View {
             if summary.inserted == 0 && summary.updated == 0 {
                 message = "导入完成，但没有发生变更"
             } else {
-                message = "导入成功：新增 \(summary.inserted) · 更新 \(summary.updated)"
+                message = String(format: String(localized: "import_success", defaultValue: "导入成功：新增 %lld · 更新 %lld"), summary.inserted, summary.updated)
             }
             showToast(message: message, icon: "square.and.arrow.down")
         } catch let error as PromptTransferError {
             alertItem = AlertItem(
-                title: "导入失败",
+                title: String(localized: "import_failure", defaultValue: "导入失败"),
                 message: error.detailedMessage
             )
         } catch {
             alertItem = AlertItem(
-                title: "导入失败",
+                title: String(localized: "import_failure", defaultValue: "导入失败"),
                 message: error.localizedDescription
             )
         }
@@ -420,13 +420,13 @@ struct ContentView: View {
         do {
             if modelContext.hasChanges {
                 try modelContext.save()
-                showToast(message: "已保存所有更改", icon: "tray.and.arrow.down.fill")
+                showToast(message: String(localized: "saved_all_changes", defaultValue: "已保存所有更改"), icon: "tray.and.arrow.down.fill")
             } else {
                 showToast(message: "当前没有待保存的更改", icon: "checkmark.circle")
             }
         } catch {
             alertItem = AlertItem(
-                title: "保存失败",
+                title: String(localized: "save_failure", defaultValue: "保存失败"),
                 message: error.localizedDescription
             )
         }
@@ -443,9 +443,9 @@ struct ContentView: View {
         let deletedTitle = prompt.title
         deletePrompts([prompt])
         presentedPrompt = nil
-        let displayName = deletedTitle.isEmpty ? "未命名模板" : deletedTitle
+        let displayName = deletedTitle.isEmpty ? String(localized: "unnamed_template", defaultValue: "未命名模板") : deletedTitle
         showToast(
-            message: "已删除 \(displayName)",
+            message: String(format: String(localized: "delete_prompt_success", defaultValue: "已删除 %@"), displayName),
             icon: "trash.fill"
         )
     }

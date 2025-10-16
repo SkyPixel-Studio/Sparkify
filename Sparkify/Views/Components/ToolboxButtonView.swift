@@ -54,7 +54,7 @@ struct ToolboxButtonView: View {
             .buttonStyle(.plain)
             .opacity(hasApps ? 1 : 0)
             .disabled(hasApps == false)
-            .help(isExpanded ? "收起 Toolbox" : "展开 Toolbox")
+            .help(isExpanded ? String(localized: "collapse_toolbox", defaultValue: "收起 Toolbox") : String(localized: "expand_toolbox", defaultValue: "展开 Toolbox"))
         }
         .padding(.horizontal, 4)
     }
@@ -97,7 +97,7 @@ private struct ToolboxAppButton: View {
                 isHovering = hovering
             }
         }
-        .help("打开 \(app.displayName)")
+        .help(String(format: String(localized: "open_app_format", defaultValue: "打开 %@"), app.displayName))
         .task(id: app.id) {
             if icon == nil {
                 icon = await ToolboxLauncher.shared.icon(for: app, targetSize: CGSize(width: 36, height: 36))
