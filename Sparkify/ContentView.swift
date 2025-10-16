@@ -15,6 +15,7 @@ struct ContentView: View {
     private var prompts: [PromptItem]
 
     @State private var searchText: String = ""
+    @State private var searchPresented: Bool = false
     @State private var presentedPrompt: PromptItem?
     @State private var activeFilter: PromptListFilter = .all
     @State private var isExporting: Bool = false
@@ -23,7 +24,6 @@ struct ContentView: View {
     @State private var alertItem: AlertItem?
     @State private var operationToast: OperationToast?
     @State private var isShowingSettings: Bool = false
-    @FocusState private var searchFieldFocused: Bool
 
     private var filteredPrompts: [PromptItem] {
         var candidates = prompts
@@ -72,6 +72,7 @@ struct ContentView: View {
                 onImport: { isImporting = true },
                 onExport: { prepareExport() },
                 searchText: $searchText,
+                searchPresented: $searchPresented,
                 onAddPrompt: addPrompt,
                 onAddAgentContextPrompt: addAgentContextPrompt,
                 onDeletePrompt: deletePrompt(_:),
@@ -86,7 +87,7 @@ struct ContentView: View {
         }
         .navigationSplitViewStyle(.balanced)
         .focusedSceneValue(\.focusSearchAction) {
-            searchFieldFocused = true
+            searchPresented = true
         }
         .focusedSceneValue(\.saveAction) {
             performManualSave()

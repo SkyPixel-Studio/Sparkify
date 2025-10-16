@@ -1,76 +1,104 @@
 {
   "fill" : {
-    "solid" : "extended-gray:0.92307,1.00000"
+    "solid" : "display-p3:0.93473,0.99727,0.32541,1.00000"
   },
   "groups" : [
     {
-      "blur-material-specializations" : [
-        {
-          "value" : 0.5
-        },
-        {
-          "appearance" : "dark",
-          "value" : null
-        }
-      ],
+      "blur-material" : 0.5,
       "layers" : [
         {
-          "blend-mode" : "normal",
-          "fill" : {
-            "linear-gradient" : [
-              "display-p3:0.86042,0.72387,0.00000,1.00000",
-              "display-p3:1.00000,0.96658,0.00000,1.00000"
+          "fill-specializations" : [
+            {
+              "value" : {
+                "solid" : "srgb:0.12984,0.12985,0.12984,1.00000"
+              }
+            },
+            {
+              "appearance" : "dark",
+              "value" : {
+                "solid" : "display-p3:0.94721,0.99021,0.41216,1.00000"
+              }
+            },
+            {
+              "appearance" : "tinted",
+              "value" : {
+                "linear-gradient" : [
+                  "display-p3:0.63886,0.64513,0.64513,1.00000",
+                  "srgb:0.12984,0.12985,0.12984,1.00000"
+                ]
+              }
+            }
+          ],
+          "glass-specializations" : [
+            {
+              "appearance" : "tinted",
+              "value" : false
+            }
+          ],
+          "hidden" : false,
+          "image-name" : "star2_画板 1-01.png",
+          "name" : "star2_画板 1-01",
+          "position" : {
+            "scale" : 0.1,
+            "translation-in-points" : [
+              0,
+              0
             ]
-          },
-          "image-name" : "image.png",
-          "name" : "image"
-        }
-      ],
-      "lighting-specializations" : [
-        {
-          "value" : "individual"
-        },
-        {
-          "appearance" : "dark",
-          "value" : "combined"
-        }
-      ],
-      "shadow-specializations" : [
-        {
-          "value" : {
-            "kind" : "layer-color",
-            "opacity" : 1
           }
         },
         {
-          "appearance" : "dark",
-          "value" : {
-            "kind" : "layer-color",
-            "opacity" : 0.5
+          "fill-specializations" : [
+            {
+              "value" : {
+                "solid" : "srgb:0.12984,0.12985,0.12984,1.00000"
+              }
+            },
+            {
+              "appearance" : "dark",
+              "value" : {
+                "solid" : "display-p3:0.94721,0.99021,0.41216,1.00000"
+              }
+            },
+            {
+              "appearance" : "tinted",
+              "value" : {
+                "linear-gradient" : [
+                  "display-p3:0.63886,0.64513,0.64513,1.00000",
+                  "srgb:0.12984,0.12985,0.12984,1.00000"
+                ]
+              }
+            }
+          ],
+          "glass-specializations" : [
+            {
+              "value" : false
+            },
+            {
+              "appearance" : "tinted",
+              "value" : false
+            }
+          ],
+          "hidden" : false,
+          "image-name" : "Ghost2_画板 1-02.png",
+          "name" : "Ghost2_画板 1-02",
+          "position" : {
+            "scale" : 0.1,
+            "translation-in-points" : [
+              0,
+              0
+            ]
           }
         }
       ],
-      "specular-specializations" : [
-        {
-          "appearance" : "dark",
-          "value" : false
-        }
-      ],
-      "translucency-specializations" : [
-        {
-          "value" : {
-            "enabled" : false,
-            "value" : 0.5
-          }
-        },
-        {
-          "appearance" : "dark",
-          "value" : {
-            "enabled" : false,
-            "value" : 0.5
-          }
-        }
-      ]
+      "lighting" : "individual",
+      "shadow" : {
+        "kind" : "layer-color",
+        "opacity" : 0.5
+      },
+      "translucency" : {
+        "enabled" : false,
+        "value" : 0.5
+      }
     }
   ],
   "supported-platforms" : {

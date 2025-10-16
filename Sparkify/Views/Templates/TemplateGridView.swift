@@ -31,6 +31,7 @@ struct TemplateGridView: View {
     let onImport: () -> Void
     let onExport: () -> Void
     @Binding var searchText: String
+    @Binding var searchPresented: Bool
     let onAddPrompt: () -> Void
     let onAddAgentContextPrompt: () -> Void
     let onDeletePrompt: (PromptItem) -> Void
@@ -107,7 +108,8 @@ struct TemplateGridView: View {
             }
         }
         .background(Color.appBackground)
-        .searchable(text: $searchText, placement: .toolbar, prompt: "搜索模板")
+        .searchable(text: $searchText, isPresented: $searchPresented, placement: .toolbar, prompt: "搜索模板")
+        .background(DoubleShiftToSearch { searchPresented = true })
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Menu {
