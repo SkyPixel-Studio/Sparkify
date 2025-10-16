@@ -2,7 +2,7 @@
 //  TemplateCardContextMenuBridge.swift
 //  Sparkify
 //
-//  Created by Assistant on 2025/10/13.
+//  Created by Willow Zhang on 2025/10/13.
 //
 
 import AppKit

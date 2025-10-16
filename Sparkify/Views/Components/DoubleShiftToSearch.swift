@@ -2,7 +2,7 @@
 //  DoubleShiftToSearch.swift
 //  Sparkify
 //
-//  Created by Assistant on 2025/10/15.
+//  Created by Willow Zhang on 2025/10/15.
 //
 
 import SwiftUI

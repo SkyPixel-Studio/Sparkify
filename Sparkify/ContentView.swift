@@ -24,6 +24,7 @@ struct ContentView: View {
     @State private var alertItem: AlertItem?
     @State private var operationToast: OperationToast?
     @State private var isShowingSettings: Bool = false
+    @State private var highlightedPromptID: String?
 
     private var filteredPrompts: [PromptItem] {
         var candidates = prompts
@@ -59,7 +60,19 @@ struct ContentView: View {
                 activeFilter: $activeFilter,
                 onImport: { isImporting = true },
                 onExport: { prepareExport() },
-                onSettings: { isShowingSettings = true }
+                onSettings: { isShowingSettings = true },
+                onHighlightPrompt: { prompt in
+                    highlightedPromptID = prompt.uuid
+                    // 清除高亮，2秒后自动消失
+                    Task { @MainActor in
+                        try? await Task.sleep(nanoseconds: 2_000_000_000)
+                        if highlightedPromptID == prompt.uuid {
+                            withAnimation(.easeOut(duration: 0.3)) {
+                                highlightedPromptID = nil
+                            }
+                        }
+                    }
+                }
             )
         } detail: {
             TemplateGridView(
@@ -82,7 +95,8 @@ struct ContentView: View {
                 },
                 onPresentError: { title, message in
                     presentAlert(title: title, message: message)
-                }
+                },
+                highlightedPromptID: $highlightedPromptID
             )
         }
         .navigationSplitViewStyle(.balanced)

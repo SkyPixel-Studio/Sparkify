@@ -2,7 +2,7 @@
 //  TemplateGridView.swift
 //  Sparkify
 //
-//  Created by Assistant on 2025/10/12.
+//  Created by Willow Zhang on 2025/10/12.
 //
 
 import SwiftUI
@@ -38,6 +38,7 @@ struct TemplateGridView: View {
     let onClonePrompt: (PromptItem) -> Void
     let onShowToast: (String, String) -> Void
     let onPresentError: (String, String) -> Void
+    @Binding var highlightedPromptID: String?
     
     @State private var sortMode: PromptSortMode = .alphabetical
     @State private var preferences = PreferencesService.shared
@@ -169,41 +170,51 @@ struct TemplateGridView: View {
                 onClearFilters: clearAllFilters
             )
         } else {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 24) {
-                    filterBar
+            ScrollViewReader { proxy in
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 24) {
+                        filterBar
 
-                    LazyVGrid(columns: columns, spacing: 24) {
-                        ForEach(arrangedPrompts, id: \.uuid) { prompt in
-                            TemplateCardView(
-                                prompt: prompt,
-                                toolboxApps: enabledToolboxApps,
-                                onCopy: handleCopyAction,
-                                onDelete: onDeletePrompt,
-                                onClone: onClonePrompt,
-                                onFilterByTag: { tag in
-                                    withAnimation(.easeInOut(duration: 0.2)) {
-                                        onSelectFilter(.tag(tag))
-                                    }
-                                },
-                                onLaunchToolboxApp: openToolboxApp,
-                                onShowToast: onShowToast,
-                                onPresentError: onPresentError,
-                                onOpenDetail: {
-                                    onOpenDetail(prompt)
-                                }
-                            )
+                        LazyVGrid(columns: columns, spacing: 24) {
+                            ForEach(arrangedPrompts, id: \.uuid) { prompt in
+                                TemplateCardView(
+                                    prompt: prompt,
+                                    toolboxApps: enabledToolboxApps,
+                                    onCopy: handleCopyAction,
+                                    onDelete: onDeletePrompt,
+                                    onClone: onClonePrompt,
+                                    onFilterByTag: { tag in
+                                        withAnimation(.easeInOut(duration: 0.2)) {
+                                            onSelectFilter(.tag(tag))
+                                        }
+                                    },
+                                    onLaunchToolboxApp: openToolboxApp,
+                                    onShowToast: onShowToast,
+                                    onPresentError: onPresentError,
+                                    onOpenDetail: {
+                                        onOpenDetail(prompt)
+                                    },
+                                    isHighlighted: highlightedPromptID == prompt.uuid
+                                )
+                                .id(prompt.uuid)
+                            }
                         }
                     }
+                    .padding(.horizontal, 24)
+                    .padding(.top, 24)
+                    .padding(.bottom, 32)
                 }
-                .padding(.horizontal, 24)
-                .padding(.top, 24)
-                .padding(.bottom, 32)
-            }
-            .scrollContentBackground(.hidden)
-            .background(Color.appBackground)
-            .onAppear {
-                print("🏁 [GridView] Grid appeared with \(arrangedPrompts.count) prompts")
+                .scrollContentBackground(.hidden)
+                .background(Color.appBackground)
+                .onAppear {
+                    print("🏁 [GridView] Grid appeared with \(arrangedPrompts.count) prompts")
+                }
+                .onChange(of: highlightedPromptID) { newID in
+                    guard let id = newID else { return }
+                    withAnimation(.easeInOut(duration: 0.4)) {
+                        proxy.scrollTo(id, anchor: .center)
+                    }
+                }
             }
         }
     }

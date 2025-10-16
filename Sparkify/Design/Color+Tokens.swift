@@ -2,7 +2,7 @@
 //  Color+Tokens.swift
 //  Sparkify
 //
-//  Created by Assistant on 2025/10/12.
+//  Created by Willow Zhang on 2025/10/12.
 //
 
 import SwiftUI

@@ -2,7 +2,7 @@
 //  SidebarListView.swift
 //  Sparkify
 //
-//  Created by Assistant on 2025/10/12.
+//  Created by Willow Zhang on 2025/10/12.
 //
 
 import Foundation
@@ -16,6 +16,7 @@ struct SidebarListView: View {
     let onImport: () -> Void
     let onExport: () -> Void
     let onSettings: () -> Void
+    let onHighlightPrompt: (PromptItem) -> Void
 
     private var displayedPrompts: [PromptItem] {
         var items = prompts
@@ -77,7 +78,10 @@ struct SidebarListView: View {
                         SidebarPromptRow(
                             prompt: prompt,
                             isSelected: presentedPrompt?.uuid == prompt.uuid,
-                            action: {
+                            onSingleClick: {
+                                onHighlightPrompt(prompt)
+                            },
+                            onDoubleClick: {
                                 presentedPrompt = prompt
                             }
                         )
@@ -163,7 +167,8 @@ struct SidebarListView: View {
 private struct SidebarPromptRow: View {
     let prompt: PromptItem
     let isSelected: Bool
-    let action: () -> Void
+    let onSingleClick: () -> Void
+    let onDoubleClick: () -> Void
 
     @State private var isHovered = false
     @FocusState private var isFocused: Bool
@@ -171,7 +176,7 @@ private struct SidebarPromptRow: View {
     private var interactionActive: Bool { isHovered || isFocused || isSelected }
 
     var body: some View {
-        Button(action: action) {
+        Button(action: onSingleClick) {
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 6) {
                     Text(prompt.title.isEmpty ? "未命名模板" : prompt.title)
@@ -198,6 +203,9 @@ private struct SidebarPromptRow: View {
             withAnimation(.spring(response: 0.2, dampingFraction: 0.82)) {
                 isHovered = hovering
             }
+        }
+        .onTapGesture(count: 2) {
+            onDoubleClick()
         }
         .animation(.spring(response: 0.2, dampingFraction: 0.82), value: interactionActive)
         .accessibilityAddTraits(isSelected ? .isSelected : [])

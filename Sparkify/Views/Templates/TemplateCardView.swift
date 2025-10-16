@@ -2,7 +2,7 @@
 //  TemplateCardView.swift
 //  Sparkify
 //
-//  Created by Assistant on 2025/10/12.
+//  Created by Willow Zhang on 2025/10/12.
 //
 
 import AppKit
@@ -51,6 +51,7 @@ struct TemplateCardView: View {
     let toolboxApps: [ToolboxApp]
     let onShowToast: (String, String) -> Void
     let onPresentError: (String, String) -> Void
+    let isHighlighted: Bool
 
     @State private var showCopiedHUD = false
     @State private var isMarkdownPreview = false
@@ -129,25 +130,41 @@ struct TemplateCardView: View {
             .fill(Color.cardBackground)
             .overlay(
                 RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .strokeBorder(cardBorderColor, lineWidth: 1)
+                    .strokeBorder(cardBorderColor, lineWidth: cardBorderWidth)
             )
             .shadow(color: cardShadowColor, radius: cardShadowRadius, x: 0, y: cardShadowYOffset)
     }
 
     private var cardBorderColor: Color {
-        Color.cardOutline.opacity(isHoveringCard ? 0.7 : 0.45)
+        if isHighlighted {
+            return Color.neonYellow
+        }
+        return Color.cardOutline.opacity(isHoveringCard ? 0.7 : 0.45)
     }
 
     private var cardShadowColor: Color {
-        Color.black.opacity(isHoveringCard ? 0.18 : 0.08)
+        if isHighlighted {
+            return Color.neonYellow.opacity(0.4)
+        }
+        return Color.black.opacity(isHoveringCard ? 0.18 : 0.08)
     }
 
     private var cardShadowRadius: CGFloat {
-        isHoveringCard ? 12 : 20
+        if isHighlighted {
+            return 16
+        }
+        return isHoveringCard ? 12 : 20
     }
 
     private var cardShadowYOffset: CGFloat {
-        isHoveringCard ? 6 : 12
+        if isHighlighted {
+            return 0
+        }
+        return isHoveringCard ? 6 : 12
+    }
+    
+    private var cardBorderWidth: CGFloat {
+        isHighlighted ? 2.5 : 1
     }
 
     private var copyButtonBackground: Color {
@@ -463,7 +480,8 @@ struct TemplateCardView: View {
         onLaunchToolboxApp: @escaping (ToolboxApp) -> Void = { _ in },
         onShowToast: @escaping (String, String) -> Void = { _, _ in },
         onPresentError: @escaping (String, String) -> Void = { _, _ in },
-        onOpenDetail: @escaping () -> Void
+        onOpenDetail: @escaping () -> Void,
+        isHighlighted: Bool = false
     ) {
         self._prompt = Bindable(prompt)
         self.onCopy = onCopy
@@ -475,6 +493,7 @@ struct TemplateCardView: View {
         self.onShowToast = onShowToast
         self.onPresentError = onPresentError
         self.onOpenDetail = onOpenDetail
+        self.isHighlighted = isHighlighted
     }
 
     var body: some View {
