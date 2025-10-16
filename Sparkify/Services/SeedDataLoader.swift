@@ -2,6 +2,8 @@ import Foundation
 import SwiftData
 
 struct SeedDataLoader {
+    /// Key for tracking seed data initialization state
+    /// Note: Also exposed via PreferencesService.seedDataKey for reset functionality
     private static let hasSeededKey = "com.sparkify.hasSeededDefaultPrompts"
     
     static func ensureSeedData(using context: ModelContext) throws {
@@ -36,7 +38,32 @@ struct SeedDataLoader {
     private static func defaultItems() -> [PromptItem] {
         [
             PromptItem(
-                title: "一页纸 · 闪电总结（即插即用）",
+                title: "欢迎使用 Sparkify",
+                body: """
+                你好！欢迎来到 Sparkify。
+
+                这是一个为你这样的 Prompt 工程师和深度LLM玩家设计的工具，旨在将你的提示词管理提升到新高度。忘掉散落在各处的笔记吧，在这里，你的灵感将变得井井有条、一键可用。
+
+                **核心用法三步走**：
+                1. 创建模板: 点击右上角的 + 号，开始撰写你的第一个提示词模板。
+                2. 定义参数: 在你的提示词中，使用 {} 来包裹任何你希望动态填充的变量（要使用英文变量名哦），比如 {topic} 或 {style}。Sparkify 会自动识别它们，并为你生成专属的输入框。
+                3. 使用与复制: 回到这个工作区，找到你的模板，在下方的参数框中填入具体内容。填好后，点击黑色的「复制」按钮，一个完整、即取即用的提示词就准备好了。粘贴到你的 LLM 工具中，开始创作吧！
+
+                **小贴士**：
+                - 左侧的列表可以帮你快速切换和管理所有模板。
+                - 你可以为模板打上标签，方便以后筛选和查找。
+
+                现在，试试创建你的第一个模板，或者随意修改这份说明书吧。祝你玩得开心！
+                """,
+                pinned: true,
+                tags: ["欢迎", "入门"],
+                params: [
+                    ParamKV(key: "topic", value: ""),
+                    ParamKV(key: "style", value: "")
+                ]
+            ),
+            PromptItem(
+                title: "示例 · 闪电总结",
                 body: """
                 请阅读以下原始材料，并以{tone}的语气输出一份**中文一页纸总结**。只按下列模板输出 Markdown，勿添加任何额外说明或前言。
 

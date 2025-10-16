@@ -25,6 +25,9 @@ struct ContentView: View {
     @State private var operationToast: OperationToast?
     @State private var isShowingSettings: Bool = false
     @State private var highlightedPromptID: String?
+    @State private var showAgentContextExportWarning: Bool = false
+    @State private var showAgentContextInfoAlert: Bool = false
+
 
     private var filteredPrompts: [PromptItem] {
         var candidates = prompts
@@ -153,6 +156,23 @@ struct ContentView: View {
                 dismissButton: .default(Text("好"))
             )
         }
+        .alert("导出提示", isPresented: $showAgentContextExportWarning) {
+            Button("继续导出") {
+                performExport()
+            }
+            Button("取消", role: .cancel) { }
+        } message: {
+            Text("检测到代理上下文模板。这类模板的文件关联信息不会被导出，重新导入后需要重新关联本地文件。")
+        }
+        .alert("关于代理上下文模板", isPresented: $showAgentContextInfoAlert) {
+            Button("继续，下次不再提醒") {
+                PreferencesService.shared.showAgentContextInfoAlert = false
+                proceedWithAgentContextSelection()
+            }
+            Button("取消", role: .cancel) { }
+        } message: {
+            Text("代理上下文模板是适用于 Codex、Claude Code 等命令行代理的系统指令文档，储存于文件中。\n\n选取对应文件后，您可以在 Sparkify 内统一管理这些模板。")
+        }
         .overlay(alignment: .top) {
             if let toast = operationToast {
                 OperationToastView(toast: toast)
@@ -185,6 +205,15 @@ struct ContentView: View {
     }
 
     private func addAgentContextPrompt() {
+        // Check if we should show the info alert
+        if PreferencesService.shared.showAgentContextInfoAlert {
+            showAgentContextInfoAlert = true
+        } else {
+            proceedWithAgentContextSelection()
+        }
+    }
+
+    private func proceedWithAgentContextSelection() {
         Task { @MainActor in
             do {
                 let urls = try AgentContextFileService.shared.chooseMarkdownFiles()
@@ -326,7 +355,18 @@ struct ContentView: View {
             )
             return
         }
-
+        
+        // 检查是否有代理上下文类型的模板
+        let hasAgentContext = prompts.contains { $0.kind == .agentContext }
+        
+        if hasAgentContext {
+            showAgentContextExportWarning = true
+        } else {
+            performExport()
+        }
+    }
+    
+    private func performExport() {
         do {
             let data = try PromptTransferService.exportData(from: prompts)
             exportDocument = PromptArchiveDocument(data: data)

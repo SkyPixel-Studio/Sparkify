@@ -20,6 +20,7 @@ final class PreferencesService {
         static let userSignature = "userSignature"
         static let enabledToolboxApps = "enabledToolboxApps"
         static let toolboxOrder = "toolboxOrder"
+        static let showAgentContextInfoAlert = "showAgentContextInfoAlert"
     }
     
     // MARK: - Properties
@@ -45,8 +46,20 @@ final class PreferencesService {
         }
     }
 
+    /// Whether to show the Agent Context info alert when adding a new agent context prompt
+    var showAgentContextInfoAlert: Bool {
+        didSet {
+            UserDefaults.standard.set(showAgentContextInfoAlert, forKey: Keys.showAgentContextInfoAlert)
+        }
+    }
+
     private let defaultToolboxIDs = Set(ToolboxApp.all.filter { $0.isEnabledByDefault }.map(\.id))
     private let knownToolboxIDs = Set(ToolboxApp.all.map(\.id))
+    
+    // MARK: - Seed Data Key (exposed for reset functionality)
+    
+    /// The same key used by SeedDataLoader to track initialization state
+    static let seedDataKey = "com.sparkify.hasSeededDefaultPrompts"
     
     // MARK: - Initialization
     
@@ -74,6 +87,13 @@ final class PreferencesService {
         } else {
             self.toolboxOrder = Self.normalizeToolboxOrder(ToolboxApp.defaultOrder)
         }
+
+        // Show agent context info alert by default (true = show)
+        if UserDefaults.standard.object(forKey: Keys.showAgentContextInfoAlert) != nil {
+            self.showAgentContextInfoAlert = UserDefaults.standard.bool(forKey: Keys.showAgentContextInfoAlert)
+        } else {
+            self.showAgentContextInfoAlert = true
+        }
     }
     
     // MARK: - Methods
@@ -81,6 +101,11 @@ final class PreferencesService {
     /// Reset signature to system username
     func resetSignatureToDefault() {
         userSignature = NSUserName()
+    }
+
+    /// Reset the seed data initialization flag, allowing seed data to be reloaded
+    func resetSeedDataFlag() {
+        UserDefaults.standard.removeObject(forKey: Self.seedDataKey)
     }
 
     func isToolEnabled(_ app: ToolboxApp) -> Bool {

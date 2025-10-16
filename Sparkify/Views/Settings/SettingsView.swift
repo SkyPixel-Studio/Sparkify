@@ -198,6 +198,9 @@ struct SettingsView: View {
             
             try modelContext.save()
             
+            // Reset the seed data initialization flag so it can be reloaded
+            preferences.resetSeedDataFlag()
+            
             // Reload seed data
             try SeedDataLoader.ensureSeedData(using: modelContext)
             

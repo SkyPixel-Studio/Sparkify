@@ -46,21 +46,15 @@ private struct SparkifyCommands: Commands {
     @FocusedValue(\.deleteAction) private var deleteAction
 
     var body: some Commands {
-        CommandMenu("查找") {
+        CommandMenu("模板") {
             Button("搜索模板") {
                 focusSearchAction?()
             }
             .keyboardShortcut("f", modifiers: .command)
-        }
-
-        CommandMenu("保存") {
             Button("保存模板更改") {
                 saveAction?()
             }
             .keyboardShortcut("s", modifiers: .command)
-        }
-
-        CommandMenu("删除") {
             Button("删除当前模板") {
                 deleteAction?()
             }

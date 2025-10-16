@@ -117,6 +117,10 @@ struct TemplateGridView: View {
                     Button("新建普通模板", action: onAddPrompt)
                         .keyboardShortcut("n", modifiers: .command)
                     Button("新建代理上下文模板…", action: onAddAgentContextPrompt)
+                        .keyboardShortcut("n", modifiers: [
+                            .command,
+                            .shift
+                        ])
                 } label: {
                     Image(systemName: "plus")
                         .font(.system(size: 16, weight: .semibold))

@@ -15,7 +15,7 @@ final class PromptStorageTests: XCTestCase {
 
         let descriptor = FetchDescriptor<PromptItem>()
         let items = try context.fetch(descriptor)
-        XCTAssertEqual(items.count, 1)
+        XCTAssertEqual(items.count, 2)
         XCTAssertTrue(items.allSatisfy { !$0.title.isEmpty })
     }
 
