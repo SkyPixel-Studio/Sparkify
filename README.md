@@ -49,15 +49,23 @@ Sparkify 运行快速、稳定可靠且尊重你的隐私。所有数据都存�
 
 ## 📦 获取 Sparkify
 
+### App Store 支持版（Support Edition）
+
+[![Download on the Mac App Store](assets/Download_on_the_Mac_App_Store_Badge_US-UK_RGB_blk_092917.svg)](https://apps.apple.com/us/app/sparkify/id6753909696)
+
+- ✅ 通过付费支持项目持续开发
+- ✅ 优先获得新功能与更新
+- ✅ 完整的技术支持
+
 ### 社区版（Community Edition）
 
-社区版提供与核心功能，完全免费。
+社区版提供与支持版相同的核心功能，完全免费。
 
 - 📥 [从 GitHub Releases 下载最新版本](https://github.com/SkyPixel-Studio/Sparkify/releases)
 - ⏱️ 通常在 App Store 版本发布一段时间后更新
 - 🔓 源代码始终保持最新
 
-> **注意：** 本仓库的源代码通常领先于 GitHub Releases 中的社区版构建。
+> **注意：** 本仓库的源代码通常领先于 GitHub Releases 中的社区版构建，但功能上与 App Store 支持版保持一致。
 
 ## 🔨 开发指南
 
