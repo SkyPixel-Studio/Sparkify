@@ -714,7 +714,6 @@ struct PromptDetailView: View {
             if let current = existing.removeValue(forKey: key) {
                 ordered.append(current)
             } else {
-                // 新占位符默认为空默认值，等待用户填写
                 let created = ParamDraft(key: key, defaultValue: nil)
                 ordered.append(created)
             }

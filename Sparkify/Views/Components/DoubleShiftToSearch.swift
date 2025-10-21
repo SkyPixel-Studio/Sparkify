@@ -8,8 +8,6 @@
 import SwiftUI
 import AppKit
 
-/// A view that monitors double-shift key presses to trigger search focus.
-/// Only works on macOS and uses local event monitoring to avoid global key capture.
 struct DoubleShiftToSearch: NSViewRepresentable {
     let action: () -> Void
     

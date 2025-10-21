@@ -4,16 +4,12 @@
 //
 //  Created by Willow Zhang on 2025/10/12.
 //
-//
-//  TagFlowLayout.swift
-//  Sparkify
-//
 
 import SwiftUI
 
 public struct TagFlowLayout: Layout {
     public var spacing: CGFloat
-    public var widthEpsilon: CGFloat = 0.5   // 去抖阈值
+    public var widthEpsilon: CGFloat = 0.5   
 
     public init(spacing: CGFloat = 8, widthEpsilon: CGFloat = 0.5) {
         self.spacing = spacing
@@ -23,10 +19,8 @@ public struct TagFlowLayout: Layout {
     // MARK: - Cache
 
     public struct Cache {
-        // 与宽度无关：只要子视图集合没变，就不要重复测量
         var sizes: [CGSize] = []
 
-        // 与宽度相关：frames/total 只在 lastWidth 变化时重算
         var lastWidth: CGFloat = .nan
         var frames: [CGRect] = []
         var total: CGSize = .zero
@@ -34,7 +28,6 @@ public struct TagFlowLayout: Layout {
 
     public func makeCache(subviews: Subviews) -> Cache { Cache() }
 
-    // 仅负责测量（与 width 无关）
     @inline(__always)
     private func ensureSizes(_ cache: inout Cache, subviews: Subviews) {
         var newSizes: [CGSize] = []
@@ -47,15 +40,13 @@ public struct TagFlowLayout: Layout {
 
         if cache.sizes != newSizes {
             cache.sizes = newSizes
-            // 尺寸变化会使排版无效
             cache.lastWidth = .nan
         }
     }
 
-    // 仅负责排版（与 width 有关）
     @inline(__always)
     private func layoutIfNeeded(_ cache: inout Cache, width: CGFloat) {
-        guard width.isFinite else { return } // 只在有限宽度下排版
+        guard width.isFinite else { return }
         if cache.lastWidth.isFinite, abs(cache.lastWidth - width) < widthEpsilon { return }
         cache.lastWidth = width
 
@@ -94,10 +85,8 @@ public struct TagFlowLayout: Layout {
                              subviews: Subviews,
                              cache: inout Cache) -> CGSize
     {
-        // 只测一次尺寸
         ensureSizes(&cache, subviews: subviews)
 
-        // ∞/未定宽：不做换行排版，返回廉价估算（单行宽 + 最大高）
         guard let w = proposal.width, w.isFinite else {
             let sizes = cache.sizes
             let totalW = sizes.reduce(0) { $0 + $1.width }
@@ -106,7 +95,6 @@ public struct TagFlowLayout: Layout {
             return CGSize(width: totalW, height: maxH)
         }
 
-        // 有限宽：真正排版一次
         layoutIfNeeded(&cache, width: w)
         return cache.total
     }
@@ -116,13 +104,10 @@ public struct TagFlowLayout: Layout {
                               subviews: Subviews,
                               cache: inout Cache)
     {
-        // 再确保尺寸缓存命中（不会重复测量）
         ensureSizes(&cache, subviews: subviews)
 
-        // 用“实际宽度”只排一次版
         layoutIfNeeded(&cache, width: bounds.width)
 
-        // 放置阶段不再做任何测量/算法，只消费缓存
         for (i, f) in cache.frames.enumerated() {
             let p = ProposedViewSize(width: cache.sizes[i].width, height: cache.sizes[i].height)
             subviews[i].place(

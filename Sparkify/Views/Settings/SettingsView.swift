@@ -304,11 +304,6 @@ struct SettingsView: View {
     
     private func openPrivacyPolicy() {
         let urlString: String
-        // if localization.currentLanguage == .zhHans {
-        //     urlString = "https://github.com/yourusername/Sparkify/blob/main/PrivacyPolicy_CN.md"
-        // } else {
-        //     urlString = "https://github.com/yourusername/Sparkify/blob/main/PrivacyPolicy_EN.md"
-        // }
         
         urlString = "https://troubled-floss-968.notion.site/Sparkify-Privacy-Policy-292fec5a12c080d3818ff84667b4e7a1?source=copy_link"
 
@@ -319,11 +314,6 @@ struct SettingsView: View {
     
     private func openTechnicalSupport() {
         let urlString: String
-        // if localization.currentLanguage == .zhHans {
-        //     urlString = "https://github.com/yourusername/Sparkify/blob/main/SupportPage_CN.md"
-        // } else {
-        //     urlString = "https://github.com/yourusername/Sparkify/blob/main/SupportPage_EN.md"
-        // }
         
         urlString = "https://troubled-floss-968.notion.site/Sparkify-Support-292fec5a12c080b6b4f2e6f68392f39f?source=copy_link"
 
