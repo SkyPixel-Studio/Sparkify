@@ -60,6 +60,11 @@ struct ContentView: View {
                 prompts: prompts,
                 presentedPrompt: $presentedPrompt,
                 deletePrompt: deletePrompts,
+                togglePinPrompt: togglePinPrompt,
+                copyFilledPrompt: copyFilledPrompt,
+                copyTemplateOnly: copyTemplateOnly,
+                clonePrompt: clonePrompt,
+                resetAllParams: resetAllParams,
                 activeFilter: $activeFilter,
                 onImport: { isImporting = true },
                 onExport: { prepareExport() },
@@ -293,6 +298,71 @@ struct ContentView: View {
                 try modelContext.save()
             } catch {
                 print("删除模板失败: \(error)")
+            }
+        }
+    }
+    
+    private func togglePinPrompt(_ prompt: PromptItem) {
+        withAnimation {
+            prompt.pinned.toggle()
+            do {
+                try modelContext.save()
+            } catch {
+                print("切换置顶失败: \(error)")
+            }
+        }
+    }
+    
+    private func copyFilledPrompt(_ prompt: PromptItem) {
+        let values = Dictionary(uniqueKeysWithValues: prompt.params.map { ($0.key, $0.resolvedValue) })
+        let result = TemplateEngine.render(template: prompt.body, values: values)
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        if pasteboard.setString(result.rendered, forType: .string) {
+            showToast(
+                message: String(localized: "copy_success", defaultValue: "已复制"),
+                icon: "doc.on.doc.fill"
+            )
+        } else {
+            alertItem = AlertItem(
+                title: String(localized: "copy_failed", defaultValue: "复制失败"),
+                message: String(localized: "cannot_write_to_clipboard", defaultValue: "无法写入剪贴板")
+            )
+        }
+    }
+    
+    private func copyTemplateOnly(_ prompt: PromptItem) {
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        if pasteboard.setString(prompt.body, forType: .string) {
+            showToast(
+                message: String(localized: "template_copied", defaultValue: "已复制模板"),
+                icon: "doc.on.doc.fill"
+            )
+        } else {
+            alertItem = AlertItem(
+                title: String(localized: "copy_failed", defaultValue: "复制失败"),
+                message: String(localized: "cannot_write_to_clipboard", defaultValue: "无法写入剪贴板")
+            )
+        }
+    }
+    
+    private func resetAllParams(_ prompt: PromptItem) {
+        withAnimation {
+            for param in prompt.params {
+                param.value = param.defaultValue ?? ""
+            }
+            do {
+                try modelContext.save()
+                showToast(
+                    message: String(localized: "params_reset_success", defaultValue: "已重置所有参数"),
+                    icon: "arrow.counterclockwise.circle.fill"
+                )
+            } catch {
+                alertItem = AlertItem(
+                    title: String(localized: "reset_failed", defaultValue: "重置失败"),
+                    message: error.localizedDescription
+                )
             }
         }
     }

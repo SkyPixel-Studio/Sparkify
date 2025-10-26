@@ -12,6 +12,11 @@ struct SidebarListView: View {
     let prompts: [PromptItem]
     @Binding var presentedPrompt: PromptItem?
     let deletePrompt: ([PromptItem]) -> Void
+    let togglePinPrompt: (PromptItem) -> Void
+    let copyFilledPrompt: (PromptItem) -> Void
+    let copyTemplateOnly: (PromptItem) -> Void
+    let clonePrompt: (PromptItem) -> Void
+    let resetAllParams: (PromptItem) -> Void
     @Binding var activeFilter: PromptListFilter
     let onImport: () -> Void
     let onExport: () -> Void
@@ -83,6 +88,24 @@ struct SidebarListView: View {
                             },
                             onDoubleClick: {
                                 presentedPrompt = prompt
+                            },
+                            onTogglePin: {
+                                togglePinPrompt(prompt)
+                            },
+                            onCopyFilled: {
+                                copyFilledPrompt(prompt)
+                            },
+                            onCopyTemplate: {
+                                copyTemplateOnly(prompt)
+                            },
+                            onClone: {
+                                clonePrompt(prompt)
+                            },
+                            onResetParams: {
+                                resetAllParams(prompt)
+                            },
+                            onDelete: {
+                                deletePrompt([prompt])
                             }
                         )
                         .listRowInsets(EdgeInsets(top: 2, leading: 12, bottom: 2, trailing: 12))
@@ -169,11 +192,71 @@ private struct SidebarPromptRow: View {
     let isSelected: Bool
     let onSingleClick: () -> Void
     let onDoubleClick: () -> Void
+    let onTogglePin: () -> Void
+    let onCopyFilled: () -> Void
+    let onCopyTemplate: () -> Void
+    let onClone: () -> Void
+    let onResetParams: () -> Void
+    let onDelete: () -> Void
 
     @State private var isHovered = false
     @FocusState private var isFocused: Bool
 
     private var interactionActive: Bool { isHovered || isFocused || isSelected }
+    
+    private var contextMenuConfiguration: TemplateCardContextMenuBridge.Configuration {
+        let title = prompt.title.isEmpty ? String(localized: "unnamed_template", defaultValue: "未命名模板") : prompt.title
+        let actions: [TemplateCardContextMenuBridge.Configuration.Action] = [
+            .init(
+                title: String(localized: "edit_template", defaultValue: "编辑模板"),
+                systemImageName: "rectangle.and.pencil.and.ellipsis"
+            ) {
+                onDoubleClick()
+            },
+            .init(
+                title: String(localized: "copy", defaultValue: "复制"),
+                systemImageName: "square.and.pencil"
+            ) {
+                onCopyFilled()
+            },
+            .init(
+                title: String(localized: "copy_template_only", defaultValue: "仅复制模板"),
+                systemImageName: "doc.on.doc"
+            ) {
+                onCopyTemplate()
+            },
+            .init(
+                title: prompt.pinned ? String(localized: "unpin_template", defaultValue: "取消置顶") : String(localized: "pin_template", defaultValue: "置顶此模板"),
+                systemImageName: "pin"
+            ) {
+                onTogglePin()
+            },
+            .init(
+                title: String(localized: "clone_template", defaultValue: "克隆模板"),
+                systemImageName: "doc.on.doc"
+            ) {
+                onClone()
+            },
+            .init(
+                title: String(localized: "reset_all_params", defaultValue: "重置所有参数"),
+                systemImageName: "arrow.counterclockwise.circle"
+            ) {
+                onResetParams()
+            },
+            .init(
+                title: String(localized: "delete_prompt", defaultValue: "删除模板"),
+                systemImageName: "trash",
+                role: .destructive
+            ) {
+                onDelete()
+            }
+        ]
+        
+        return TemplateCardContextMenuBridge.Configuration(
+            headerTitle: title,
+            actions: actions
+        )
+    }
 
     var body: some View {
         Button(action: onSingleClick) {
@@ -207,6 +290,10 @@ private struct SidebarPromptRow: View {
         .onTapGesture(count: 2) {
             onDoubleClick()
         }
+        .overlay(
+            TemplateCardContextMenuBridge(configuration: contextMenuConfiguration)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        )
         .animation(.spring(response: 0.2, dampingFraction: 0.82), value: interactionActive)
         .accessibilityAddTraits(isSelected ? .isSelected : [])
     }

@@ -383,6 +383,23 @@
         }
       }
     },
+    "cannot_write_to_clipboard" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无法写入剪贴板"
+          }
+        },
+        "en": {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cannot write to clipboard"
+          }
+        }
+      }
+    },
     "clear_filters" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -638,6 +655,17 @@
         }
       }
     },
+    "copy_failed" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "复制失败"
+          }
+        }
+      }
+    },
     "copy_filled_prompt" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -651,6 +679,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "复制渲染"
+          }
+        }
+      }
+    },
+    "copy_success" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "已复制"
           }
         }
       }
@@ -838,40 +877,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "当前模板数量"
-          }
-        }
-      }
-    },
-    "privacy_policy" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Privacy Policy"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "隐私政策"
-          }
-        }
-      }
-    },
-    "technical_support" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Technical Support"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "技术支持"
           }
         }
       }
@@ -2658,6 +2663,17 @@
         }
       }
     },
+    "params_reset_success" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "已重置所有参数"
+          }
+        }
+      }
+    },
     "pending_fill" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -2773,6 +2789,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "主文件"
+          }
+        }
+      }
+    },
+    "privacy_policy" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Privacy Policy"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "隐私政策"
           }
         }
       }
@@ -3062,6 +3095,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "确定要将所有 %lld 个参数重置为默认值吗？此操作将覆盖所有当前值。"
+          }
+        }
+      }
+    },
+    "reset_failed" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "重置失败"
           }
         }
       }
@@ -3816,6 +3860,23 @@
         }
       }
     },
+    "technical_support" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Technical Support"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "技术支持"
+          }
+        }
+      }
+    },
     "template" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -3829,6 +3890,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "模板"
+          }
+        }
+      }
+    },
+    "template_copied" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "已复制模板"
           }
         }
       }
