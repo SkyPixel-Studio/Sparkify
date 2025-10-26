@@ -512,6 +512,7 @@ struct TemplateCardView: View {
                 CopiedHUDView()
                     .padding(.top, -10)
                     .transition(.opacity.combined(with: .move(edge: .top)))
+                    .zIndex(1)
             }
         }
         .contentShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
