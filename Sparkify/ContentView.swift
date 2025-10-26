@@ -404,16 +404,29 @@ struct ContentView: View {
     }
 
     private func makeClonedTitle(from base: String) -> String {
-        let suffix = " 副本"
-        if base.hasSuffix(suffix) == false {
-            return base + suffix
+        // Try simple cloned format first
+        let simpleClone = String(
+            localized: "cloned_title_format",
+            defaultValue: "%@ 副本"
+        )
+        var attempt = String(format: simpleClone, base)
+        
+        // If that title doesn't exist, we're done
+        guard prompts.contains(where: { $0.title == attempt }) else {
+            return attempt
         }
-        var attempt = base
+        
+        // Otherwise, try numbered formats
+        let numberedClone = String(
+            localized: "cloned_title_numbered_format",
+            defaultValue: "%@ 副本 %lld"
+        )
         var index = 2
-        while prompts.contains(where: { $0.title == attempt }) {
-            attempt = base + " 副本 \(index)"
+        repeat {
+            attempt = String(format: numberedClone, base, index)
             index += 1
-        }
+        } while prompts.contains(where: { $0.title == attempt })
+        
         return attempt
     }
 

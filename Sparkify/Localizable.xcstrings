@@ -384,18 +384,17 @@
       }
     },
     "cannot_write_to_clipboard" : {
-      "extractionState" : "extracted_with_value",
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cannot write to clipboard"
+          }
+        },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "无法写入剪贴板"
-          }
-        },
-        "en": {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Cannot write to clipboard"
           }
         }
       }
@@ -464,6 +463,40 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "克隆模板"
+          }
+        }
+      }
+    },
+    "cloned_title_format" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copy of %@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ 副本"
+          }
+        }
+      }
+    },
+    "cloned_title_numbered_format" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copy %lld of %@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ 副本 %lld"
           }
         }
       }
