@@ -163,6 +163,7 @@ struct PromptDetailView: View {
             TextField(String(localized: "summary", defaultValue: "摘要"), text: $draft.title, axis: .vertical)
                 .font(.system(size: 24, weight: .semibold, design: .rounded))
                 .focused($focusedField, equals: .title)
+                .autocorrectionDisabled()
 
             HStack(spacing: 16) {
                 Text(prompt.createdAt, style: .date)
@@ -477,20 +478,21 @@ struct PromptDetailView: View {
             }
 
             if bodyViewMode == .edit {
-                TextEditor(text: $draft.body)
-                    .frame(minHeight: 240)
-                    .font(.system(size: 15, weight: .regular, design: .monospaced))
-                    .scrollContentBackground(.hidden)
-                    .padding(12)
-                    .background(RoundedRectangle(cornerRadius: 12).fill(Color.cardSurface))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 12)
-                            .stroke(Color.cardOutline.opacity(0.5), lineWidth: 1)
-                    )
-                    .focused($focusedField, equals: .body)
-                    .onChange(of: draft.body, initial: false) { _, _ in
-                        syncDraftParams()
-                    }
+                MacPlainTextEditor(
+                    text: $draft.body,
+                    font: .monospacedSystemFont(ofSize: 15, weight: .regular)
+                )
+                .frame(minHeight: 240)
+                .padding(12)
+                .background(RoundedRectangle(cornerRadius: 12).fill(Color.cardSurface))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(Color.cardOutline.opacity(0.5), lineWidth: 1)
+                )
+                .focused($focusedField, equals: .body)
+                .onChange(of: draft.body, initial: false) { _, _ in
+                    syncDraftParams()
+                }
             } else {
                 ScrollView {
                     if draft.body.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
@@ -550,6 +552,7 @@ struct PromptDetailView: View {
                 }
             ))
             .textFieldStyle(.roundedBorder)
+            .autocorrectionDisabled()
             
             if recentTags.isEmpty == false {
                 VStack(alignment: .leading, spacing: 8) {
@@ -617,6 +620,7 @@ struct PromptDetailView: View {
                             ), prompt: Text(String(localized: "empty_means_no_default", defaultValue: "留空代表默认不填")))
                             .textFieldStyle(.roundedBorder)
                             .font(.system(size: 14, weight: .regular, design: .monospaced))
+                            .autocorrectionDisabled()
 
                             Text(parameterStatusText(for: draft.params[index]))
                                 .font(.caption2)

@@ -810,12 +810,12 @@ struct TemplateCardView: View {
                                     .help(String(localized: "reset_to_default", defaultValue: "重置为默认值"))
                                 }
 
-                                TextEditor(text: binding(for: paramModel))
-                                .font(.system(size: 13, weight: .regular, design: .monospaced))
-                                .foregroundStyle(Color.appForeground)
-                                .scrollContentBackground(.hidden)
-                                .padding(10)
+                                MacPlainTextEditor(
+                                    text: binding(for: paramModel),
+                                    font: .monospacedSystemFont(ofSize: 13, weight: .regular)
+                                )
                                 .frame(minHeight: 80, maxHeight: 140, alignment: .topLeading)
+                                .padding(10)
                                 .background(
                                     RoundedRectangle(cornerRadius: 8)
                                         .fill(Color.white)
@@ -880,6 +880,7 @@ struct TemplateCardView: View {
                                 .focused($focusedParam, equals: focusTarget)
                                 .font(.system(size: 13, weight: .regular, design: .monospaced))
                                 .lineLimit(1)
+                                .autocorrectionDisabled()
                                 .onAppear {
                                     primeDraft(for: paramModel)
                                     restoreFocusIfNeeded(for: paramModel)
@@ -1543,6 +1544,7 @@ private struct RenameSummarySheet: View {
             TextField(String(localized: "unnamed_template", defaultValue: "未命名模板"), text: $title)
                 .textFieldStyle(.roundedBorder)
                 .focused($isFieldFocused)
+                .autocorrectionDisabled()
                 .onSubmit(onConfirm)
 
             Spacer(minLength: 0)
