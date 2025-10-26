@@ -120,11 +120,47 @@ struct TemplateCardContextMenuBridge: NSViewRepresentable {
             }
 
             switch event.type {
-            case .rightMouseDown, .otherMouseDown where event.buttonNumber == 2:
+            case .rightMouseDown:
+                // 检查当前第一响应者是否是文本编辑控件
+                if let firstResponder = window?.firstResponder as? NSView,
+                   isTextInputControl(firstResponder) {
+                    // 让文本编辑控件处理自己的右键菜单
+                    return nil
+                }
+                return self
+            case .otherMouseDown where event.buttonNumber == 2:
+                // 中键点击也作为右键处理
+                if let firstResponder = window?.firstResponder as? NSView,
+                   isTextInputControl(firstResponder) {
+                    return nil
+                }
                 return self
             default:
                 return nil
             }
+        }
+        
+        /// 判断视图是否是文本输入控件
+        private func isTextInputControl(_ view: NSView) -> Bool {
+            // 检查是否是文本输入控件或其子类
+            if view is NSTextField {
+                return true
+            }
+            if view is NSTextView {
+                return true
+            }
+            // NSTextField 内部使用的编辑器
+            if view is NSText {
+                return true
+            }
+            // SwiftUI TextEditor 的底层实现
+            let className = String(describing: type(of: view))
+            if className.contains("NSText") || 
+               className.contains("FieldEditor") ||
+               className.contains("TextView") {
+                return true
+            }
+            return false
         }
 
         override func rightMouseDown(with event: NSEvent) {
