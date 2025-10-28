@@ -55,6 +55,36 @@ struct ToolboxApp: Identifiable, Hashable {
     
     static let all: [ToolboxApp] = [
         ToolboxApp(
+            id: "flowdown",
+            displayNameKey: "toolbox_flowdown_name",
+            summaryKey: "toolbox_flowdown_summary",
+            launchTarget: .native(
+                bundleID: "wiki.qaq.flow",
+                fallbackURL: nil
+            ),
+            iconSources: [
+                .appBundle(bundleID: "wiki.qaq.flow"),
+                .systemImage(name: "message.fill")
+            ],
+            optionKind: .nativeApp,
+            isEnabledByDefault: false
+        ),
+        ToolboxApp(
+            id: "cherry-studio",
+            displayNameKey: "toolbox_cherry_studio_name",
+            summaryKey: "toolbox_cherry_studio_summary",
+            launchTarget: .native(
+                bundleID: "com.kangfenmao.CherryStudio",
+                fallbackURL: nil
+            ),
+            iconSources: [
+                .appBundle(bundleID: "com.kangfenmao.CherryStudio"),
+                .systemImage(name: "message.fill")
+            ],
+            optionKind: .nativeApp,
+            isEnabledByDefault: false
+        ),
+        ToolboxApp(
             id: "chatgpt-app",
             displayNameKey: "toolbox_chatgpt_name",
             summaryKey: "toolbox_chatgpt_app_summary",

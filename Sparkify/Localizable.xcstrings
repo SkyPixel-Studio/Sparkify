@@ -4091,6 +4091,40 @@
         }
       }
     },
+    "toolbox_cherry_studio_name" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cherry Studio"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cherry Studio"
+          }
+        }
+      }
+    },
+    "toolbox_cherry_studio_summary" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Local LLM Chat client, requires prior installation"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "本地 LLM 对话客户端，需提前安装"
+          }
+        }
+      }
+    },
     "toolbox_chatgpt_app_summary" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -4274,6 +4308,40 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "ByteDance 豆包大模型 网页客户端"
+          }
+        }
+      }
+    },
+    "toolbox_flowdown_name" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "FlowDown"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "浮望"
+          }
+        }
+      }
+    },
+    "toolbox_flowdown_summary" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Local LLM Chat client, requires prior installation"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "本地 LLM 对话客户端，需提前安装"
           }
         }
       }
