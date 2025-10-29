@@ -213,7 +213,7 @@ struct VersionHistoryView: View {
             Text(String(localized: "milestone", defaultValue: "里程碑"))
                 .font(.system(size: 11, weight: .semibold))
         }
-        .foregroundStyle(Color.black)
+        .foregroundStyle(Color.accentForeground)
         .padding(.horizontal, 8)
         .padding(.vertical, 4)
         .background(

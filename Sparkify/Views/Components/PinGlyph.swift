@@ -15,7 +15,7 @@ struct PinGlyph: View {
     private var iconName: String { isPinned ? "pin.fill" : "pin" }
     private var iconColor: Color {
         if isPinned {
-            return Color.black
+            return Color.accentForeground
         }
         if isHighlighted {
             return Color.appForeground.opacity(0.9)
@@ -56,6 +56,6 @@ struct PinGlyph: View {
                 Circle()
                     .stroke(circleStroke, lineWidth: 1)
             )
-            .shadow(color: isPinned ? Color.neonYellow.opacity(0.28) : Color.black.opacity(isHighlighted ? 0.12 : 0), radius: isPinned || isHighlighted ? 6 : 0, y: isPinned || isHighlighted ? 2 : 0)
+            .shadow(color: isPinned ? Color.neonYellow.opacity(0.28) : Color.shadowSoft.opacity(isHighlighted ? 0.6 : 0), radius: isPinned || isHighlighted ? 6 : 0, y: isPinned || isHighlighted ? 2 : 0)
     }
 }

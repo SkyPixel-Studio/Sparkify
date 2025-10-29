@@ -507,7 +507,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Copy %lld of %@"
+            "value" : "Copy of %@ (%lld)"
           }
         },
         "zh-Hans" : {
@@ -4289,6 +4289,74 @@
         }
       }
     },
+    "theme_appearance" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Theme"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "界面主题"
+          }
+        }
+      }
+    },
+    "theme_dark" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dark"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "深色"
+          }
+        }
+      }
+    },
+    "theme_follow_system" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "System"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "跟随系统"
+          }
+        }
+      }
+    },
+    "theme_light" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Light"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "浅色"
+          }
+        }
+      }
+    },
     "time_ago" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -4374,40 +4442,6 @@
         }
       }
     },
-    "toolbox_cherry_studio_name" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Cherry Studio"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Cherry Studio"
-          }
-        }
-      }
-    },
-    "toolbox_cherry_studio_summary" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Local LLM Chat client, requires prior installation"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "本地 LLM 对话客户端，需提前安装"
-          }
-        }
-      }
-    },
     "toolbox_chatgpt_app_summary" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -4455,6 +4489,40 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "ChatGPT 网页客户端"
+          }
+        }
+      }
+    },
+    "toolbox_cherry_studio_name" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cherry Studio"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cherry Studio"
+          }
+        }
+      }
+    },
+    "toolbox_cherry_studio_summary" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Local LLM Chat client, requires prior installation"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "本地 LLM 对话客户端，需提前安装"
           }
         }
       }

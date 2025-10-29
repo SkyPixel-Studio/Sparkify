@@ -149,7 +149,7 @@ struct TemplateCardView: View {
         if isHighlighted {
             return Color.neonYellow.opacity(0.4)
         }
-        return Color.black.opacity(isHoveringCard ? 0.18 : 0.08)
+        return isHoveringCard ? Color.shadowStrong : Color.shadowSoft
     }
 
     private var cardShadowRadius: CGFloat {
@@ -171,7 +171,7 @@ struct TemplateCardView: View {
     }
 
     private var copyButtonBackground: Color {
-        return isCopyHovered ? Color.neonYellow : Color.black
+        return isCopyHovered ? Color.neonYellow : Color.neutralHigh
     }
 
     /// 确保在布局切换后仍然聚焦到用户正在编辑的参数。
@@ -185,7 +185,7 @@ struct TemplateCardView: View {
     }
 
     private var copyButtonForeground: Color {
-        return isCopyHovered ? Color.black : Color.white
+        return isCopyHovered ? Color.accentForeground : Color.invertedForeground
     }
 
     private var copyButtonBorder: Color {
@@ -203,7 +203,7 @@ struct TemplateCardView: View {
         if hasAgentAttachments == false {
             return Color.secondary
         }
-        return Color.black.opacity(isOverwriteHovered ? 0.95 : 0.85)
+        return Color.accentForeground.opacity(isOverwriteHovered ? 0.95 : 0.85)
     }
 
     private var overwriteButtonBorder: Color {
@@ -224,7 +224,7 @@ struct TemplateCardView: View {
                         ProgressView()
                             .progressViewStyle(.circular)
                             .scaleEffect(0.65)
-                            .tint(Color.black.opacity(0.85))
+                            .tint(Color.neutralHigh.opacity(0.85))
                     } else {
                         Image(systemName: "square.and.arrow.down")
                             .font(.system(size: 14, weight: .semibold))
@@ -768,7 +768,7 @@ struct TemplateCardView: View {
                                     .padding(.horizontal, 8)
                                     .padding(.vertical, 4)
                                     .background(RoundedRectangle(cornerRadius: 8).fill(Color.neonYellow.opacity(0.4)))
-                                    .foregroundStyle(Color.black)
+                                    .foregroundStyle(Color.accentForeground)
 
                                 if paramModel.options.isEmpty {
                                     Text(String(localized: "enum_options_empty_hint", defaultValue: "请在详情页配置枚举选项"))
@@ -815,13 +815,13 @@ struct TemplateCardView: View {
                                         .padding(.horizontal, 10)
                                         .background(
                                             RoundedRectangle(cornerRadius: 8)
-                                                .fill(Color.white)
+                                                .fill(Color.neutralLow)
                                         )
                                         .overlay(
                                             RoundedRectangle(cornerRadius: 8)
                                                 .stroke(isMissing ? Color.neonYellow : Color.cardOutline, lineWidth: isMissing ? 1.6 : 1)
                                         )
-                                        .shadow(color: isMissing ? Color.neonYellow.opacity(0.22) : Color.black.opacity(0.04), radius: isMissing ? 6 : 1.2, y: isMissing ? 3 : 1)
+                                        .shadow(color: isMissing ? Color.neonYellow.opacity(0.22) : Color.shadowSoft.opacity(0.5), radius: isMissing ? 6 : 1.2, y: isMissing ? 3 : 1)
                                     }
                                 }
 
@@ -863,7 +863,7 @@ struct TemplateCardView: View {
                                         .padding(.horizontal, 8)
                                         .padding(.vertical, 4)
                                         .background(RoundedRectangle(cornerRadius: 8).fill(Color.neonYellow.opacity(0.4)))
-                                        .foregroundStyle(Color.black)
+                                        .foregroundStyle(Color.accentForeground)
 
                                     Text(String(localized: "multiline_input", defaultValue: "多行输入"))
                                         .font(.system(size: 10, weight: .medium))
@@ -915,13 +915,13 @@ struct TemplateCardView: View {
                                 .padding(10)
                                 .background(
                                     RoundedRectangle(cornerRadius: 8)
-                                        .fill(Color.white)
+                                        .fill(Color.neutralLow)
                                 )
                                 .overlay(
                                     RoundedRectangle(cornerRadius: 8)
                                         .stroke(isMissing ? Color.neonYellow : Color.cardOutline, lineWidth: isMissing ? 1.6 : 1)
                                 )
-                                .shadow(color: isMissing ? Color.neonYellow.opacity(0.22) : Color.black.opacity(0.04), radius: isMissing ? 6 : 1.2, y: isMissing ? 3 : 1)
+                                .shadow(color: isMissing ? Color.neonYellow.opacity(0.22) : Color.shadowSoft.opacity(0.5), radius: isMissing ? 6 : 1.2, y: isMissing ? 3 : 1)
                                 .focused($focusedParam, equals: focusTarget)
                                 .onAppear {
                                     primeDraft(for: paramModel)
@@ -954,7 +954,7 @@ struct TemplateCardView: View {
                                     .padding(.horizontal, 8)
                                     .padding(.vertical, 4)
                                     .background(RoundedRectangle(cornerRadius: 8).fill(Color.neonYellow.opacity(0.4)))
-                                    .foregroundStyle(Color.black)
+                                    .foregroundStyle(Color.accentForeground)
 
                                 TextField(
                                     "{\(paramModel.key)}",
@@ -967,13 +967,13 @@ struct TemplateCardView: View {
                                 .padding(.horizontal, 10)
                                 .background(
                                     RoundedRectangle(cornerRadius: 8)
-                                        .fill(Color.white)
+                                        .fill(Color.neutralLow)
                                 )
                                 .overlay(
                                     RoundedRectangle(cornerRadius: 8)
                                         .stroke(isMissing ? Color.neonYellow : Color.cardOutline, lineWidth: isMissing ? 1.6 : 1)
                                 )
-                                .shadow(color: isMissing ? Color.neonYellow.opacity(0.22) : Color.black.opacity(0.04), radius: isMissing ? 6 : 1.2, y: isMissing ? 3 : 1)
+                                .shadow(color: isMissing ? Color.neonYellow.opacity(0.22) : Color.shadowSoft.opacity(0.5), radius: isMissing ? 6 : 1.2, y: isMissing ? 3 : 1)
                                 .focused($focusedParam, equals: focusTarget)
                                 .font(.system(size: 13, weight: .regular, design: .monospaced))
                                 .lineLimit(1)
@@ -1059,7 +1059,7 @@ struct TemplateCardView: View {
                     } label: {
                         Text("M")
                             .font(.system(size: 13, weight: .bold))
-                            .foregroundStyle(isMarkdownPreview ? Color.black : Color.appForeground.opacity(0.6))
+                            .foregroundStyle(isMarkdownPreview ? Color.accentForeground : Color.appForeground.opacity(0.6))
                             .frame(width: 24, height: 24)
                             .background(
                                 Circle()

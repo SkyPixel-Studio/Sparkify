@@ -38,12 +38,21 @@ struct SettingsView: View {
     }
     
     var body: some View {
+        @Bindable var preferences = preferences
+        @Bindable var localization = localization
         let orderedApps = orderedToolboxApps
 
         return NavigationStack {
             Form {
                 // MARK: - User Preferences
                 Section {
+                    Picker(String(localized: "theme_appearance", defaultValue: "界面主题"), selection: $preferences.themePreference) {
+                        ForEach(ThemePreference.allCases) { preference in
+                            Text(preference.localizedName).tag(preference)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+
                     // Language Picker
                     VStack(alignment: .leading, spacing: 4) {
                         Picker(String(localized: "current_language", defaultValue: "语言"), selection: $localization.currentLanguage) {
@@ -427,7 +436,7 @@ private struct ToolboxSettingsRow: View {
                 Capsule()
                     .fill(app.optionKind == .nativeApp ? Color.neonYellow.opacity(0.25) : Color.cardSurface)
             )
-            .foregroundStyle(app.optionKind == .nativeApp ? Color.black : Color.secondary)
+            .foregroundStyle(app.optionKind == .nativeApp ? Color.accentForeground : Color.secondary)
     }
 
     private var webLinkButton: some View {

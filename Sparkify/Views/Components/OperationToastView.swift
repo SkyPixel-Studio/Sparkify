@@ -21,9 +21,9 @@ struct OperationToastView: View {
         .padding(.vertical, 10)
         .background(
             Capsule()
-                .fill(Color.black.opacity(0.92))
+                .fill(Color.neutralHigh.opacity(0.92))
         )
-        .foregroundStyle(Color.white)
-        .shadow(color: Color.black.opacity(0.25), radius: 14, y: 8)
+        .foregroundStyle(Color.invertedForeground)
+        .shadow(color: Color.shadowStrong, radius: 14, y: 8)
     }
 }

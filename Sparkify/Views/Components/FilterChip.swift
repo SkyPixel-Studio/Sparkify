@@ -21,7 +21,7 @@ struct FilterChip: View {
                 .padding(.vertical, 6)
                 .background(
                     Capsule()
-                        .fill(isActive ? (tint ?? Color.black) : Color.cardSurface)
+                        .fill(isActive ? (tint ?? Color.neutralHigh) : Color.cardSurface)
                 )
                 .overlay(
                     Capsule()
@@ -34,7 +34,7 @@ struct FilterChip: View {
 
     private var foreground: Color {
         if isActive {
-            return tint == nil ? Color.white : Color.black
+            return tint == nil ? Color.invertedForeground : Color.accentForeground
         }
         return tint ?? Color.appForeground
     }
@@ -64,9 +64,9 @@ struct SidebarActionButton: View {
                 .padding(.vertical, 8)
                 .background(
                     RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .fill(Color.black)
+                        .fill(Color.neutralHigh)
                 )
-                .foregroundStyle(Color.white)
+                .foregroundStyle(Color.invertedForeground)
         }
         .buttonStyle(.plain)
     }

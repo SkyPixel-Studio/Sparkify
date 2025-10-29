@@ -8,23 +8,31 @@
 import SwiftUI
 
 struct TagBadge: View {
+    @Environment(\.colorScheme) private var colorScheme
     let tag: String
 
     var body: some View {
         let displayName = PromptTagPolicy.localizedDisplayName(for: tag)
         let style = TagPalette.style(for: tag)
+        
+        // Dark mode: use foreground as background with white text
+        // Light mode: use original styling
+        let backgroundColor = colorScheme == .dark ? style.foreground : style.background
+        let foregroundColor = colorScheme == .dark ? Color.white : style.foreground
+        let strokeColor = colorScheme == .dark ? style.foreground.opacity(0.3) : style.foreground.opacity(0.12)
+        
         Text(displayName)
             .font(.caption.weight(.semibold))
             .padding(.horizontal, 10)
             .padding(.vertical, 4)
-            .foregroundStyle(style.foreground)
+            .foregroundStyle(foregroundColor)
             .background(
                 Capsule()
-                    .fill(style.background)
+                    .fill(backgroundColor)
             )
             .overlay(
                 Capsule()
-                    .stroke(style.foreground.opacity(0.12), lineWidth: 1)
+                    .stroke(strokeColor, lineWidth: 1)
             )
     }
 }

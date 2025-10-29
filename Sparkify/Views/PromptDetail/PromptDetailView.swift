@@ -322,7 +322,7 @@ struct PromptDetailView: View {
                         ProgressView()
                             .progressViewStyle(.circular)
                             .scaleEffect(0.65)
-                            .tint(Color.black.opacity(0.85))
+                            .tint(Color.neutralHigh.opacity(0.85))
                     } else {
                         Image(systemName: "square.and.arrow.down")
                             .font(.system(size: 13, weight: .semibold))
@@ -336,7 +336,7 @@ struct PromptDetailView: View {
                     Capsule()
                         .fill(hasAgentAttachments ? Color.neonYellow : Color.cardSurface.opacity(0.6))
                 )
-                .foregroundStyle(hasAgentAttachments ? Color.black : Color.secondary)
+                .foregroundStyle(hasAgentAttachments ? Color.accentForeground : Color.secondary)
             }
             .buttonStyle(.plain)
             .disabled(hasAgentAttachments == false || hasAttachmentOperationInFlight)
@@ -392,7 +392,7 @@ struct PromptDetailView: View {
                                     RoundedRectangle(cornerRadius: 6, style: .continuous)
                                         .fill(Color.neonYellow.opacity(0.4))
                                 )
-                                .foregroundStyle(Color.black)
+                                .foregroundStyle(Color.accentForeground)
                         }
                     }
                     Text(attachmentStatus(for: attachment))
@@ -599,7 +599,7 @@ struct PromptDetailView: View {
                                         RoundedRectangle(cornerRadius: 6)
                                             .stroke(Color.cardOutline.opacity(0.4), lineWidth: 1)
                                     )
-                                    .foregroundStyle(draft.tags.contains(tag) ? Color.black : Color.appForeground)
+                                    .foregroundStyle(draft.tags.contains(tag) ? Color.accentForeground : Color.appForeground)
                             }
                             .buttonStyle(.plain)
                             .disabled(draft.tags.contains(tag))
@@ -784,7 +784,7 @@ struct PromptDetailView: View {
                     .keyboardShortcut("s", modifiers: .command)
                     .buttonStyle(.borderedProminent)
                     .tint(Color.neonYellow)
-                    .foregroundStyle(Color.black)
+                    .foregroundStyle(Color.accentForeground)
                 }
             } else {
                 Button(String(localized: "close", defaultValue: "关闭")) {

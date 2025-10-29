@@ -5,12 +5,15 @@
 //  Created by Willow Zhang on 2025/10/11.
 //
 
+import AppKit
 import SwiftUI
 import SwiftData
 
 @main
 struct SparkifyApp: App {
     let sharedModelContainer: ModelContainer
+    @State private var preferences = PreferencesService.shared
+    @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
 
     init() {
         let schema = Schema([
@@ -30,12 +33,45 @@ struct SparkifyApp: App {
     }
 
     var body: some Scene {
-        WindowGroup {
+        @Bindable var preferences = preferences
+        WindowGroup(id: "main") {
             ContentView()
+                .preferredColorScheme(preferences.resolvedColorScheme)
+                .applyAppPalette(preferences.themePreference)
+                .onAppear {
+                    updateAppAppearance(for: preferences.themePreference)
+                    configureMainWindow()
+                }
+                .onChange(of: preferences.themePreference) { _, newValue in
+                    updateAppAppearance(for: newValue)
+                }
         }
         .modelContainer(sharedModelContainer)
         .commands {
             SparkifyCommands()
+        }
+    }
+    
+    @MainActor
+    private func configureMainWindow() {
+        guard let window = NSApplication.shared.windows.first else { return }
+        WindowPersistenceController.shared.configureIfNeeded(for: window)
+    }
+
+    @MainActor
+    private func updateAppAppearance(for preference: ThemePreference) {
+        guard let scheme = preference.forcedColorScheme else {
+            NSApp.appearance = nil
+            return
+        }
+
+        switch scheme {
+        case .light:
+            NSApp.appearance = NSAppearance(named: .aqua)
+        case .dark:
+            NSApp.appearance = NSAppearance(named: .darkAqua)
+        @unknown default:
+            NSApp.appearance = nil
         }
     }
 }

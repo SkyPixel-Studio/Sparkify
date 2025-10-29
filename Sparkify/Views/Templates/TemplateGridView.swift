@@ -138,12 +138,12 @@ struct TemplateGridView: View {
                 } label: {
                     Image(systemName: "plus")
                         .font(.system(size: 16, weight: .semibold))
-                        .foregroundStyle(Color.black)
+                        .foregroundStyle(Color.accentForeground)
                         .frame(width: 40, height: 40)
                         .padding(.horizontal, 12)
                         .background(
                             Capsule()
-                                .fill(Color.white)
+                                .fill(Color.cardBackground)
                         )
                 }
                 .menuStyle(.button)
@@ -347,7 +347,7 @@ private struct TagFilterMenu: View {
     }
 
     private var iconStyle: TagStyle {
-        currentStyle ?? TagStyle(background: Color.neonYellow.opacity(0.7), foreground: Color.black)
+        currentStyle ?? TagStyle(background: Color.neonYellow.opacity(0.7), foreground: Color.accentForeground)
     }
 
     private func menuLabel(text: String, isSelected: Bool) -> some View {

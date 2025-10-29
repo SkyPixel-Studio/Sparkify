@@ -24,9 +24,9 @@ struct TemplateActionButton: View {
             .padding(.horizontal, 14)
             .background(
                 Capsule()
-                    .fill(Color.black)
+                    .fill(Color.neutralHigh)
             )
-            .foregroundStyle(Color.white)
+            .foregroundStyle(Color.invertedForeground)
         }
         .buttonStyle(.plain)
     }

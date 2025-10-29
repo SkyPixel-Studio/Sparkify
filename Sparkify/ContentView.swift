@@ -55,7 +55,7 @@ struct ContentView: View {
     }
 
     var body: some View {
-        NavigationSplitView {
+        NavigationSplitView(columnVisibility: .constant(.all)) {
             SidebarListView(
                 prompts: prompts,
                 presentedPrompt: $presentedPrompt,
@@ -82,6 +82,7 @@ struct ContentView: View {
                     }
                 }
             )
+            .navigationSplitViewColumnWidth(min: 240, ideal: 280, max: 400)
         } detail: {
             TemplateGridView(
                 prompts: filteredPrompts,

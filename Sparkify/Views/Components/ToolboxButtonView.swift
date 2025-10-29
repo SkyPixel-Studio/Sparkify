@@ -39,17 +39,17 @@ struct ToolboxButtonView: View {
             } label: {
                 Image(systemName: isExpanded ? "xmark.circle.fill" : "square.grid.3x3.fill")
                     .font(.system(size: 20, weight: .semibold))
-                    .foregroundStyle(isExpanded ? Color.black : Color.white)
+                    .foregroundStyle(isExpanded ? Color.accentForeground : Color.neutralHigh)
                     .frame(width: 48, height: 48)
                     .background(
                         Circle()
-                            .fill(isExpanded ? Color.neonYellow : Color.black.opacity(0.85))
+                            .fill(isExpanded ? Color.neonYellow : collapsedBackground)
                     )
                     .overlay(
                         Circle()
-                            .stroke(Color.white.opacity(isExpanded ? 0.2 : 0), lineWidth: 1)
+                            .stroke(Color.neutralHigh.opacity(isExpanded ? 0.2 : 0), lineWidth: 1)
                     )
-                    .shadow(color: Color.black.opacity(0.25), radius: 12, y: 8)
+                    .shadow(color: Color.shadowStrong, radius: 12, y: 8)
             }
             .buttonStyle(.plain)
             .opacity(hasApps ? 1 : 0)
@@ -58,6 +58,15 @@ struct ToolboxButtonView: View {
         }
         .padding(.horizontal, 4)
     }
+
+    private var collapsedBackground: Color {
+        if colorScheme == .dark {
+            return Color.cardSurface.opacity(0.9)
+        }
+        return Color.neutralHigh.opacity(0.85)
+    }
+
+    @Environment(\.colorScheme) private var colorScheme
 }
 
 private struct ToolboxAppButton: View {
@@ -80,7 +89,7 @@ private struct ToolboxAppButton: View {
                         RoundedRectangle(cornerRadius: 14, style: .continuous)
                             .stroke(Color.cardOutline.opacity(isHovering ? 0.35 : 0.25), lineWidth: 1)
                     )
-                    .shadow(color: Color.black.opacity(isHovering ? 0.18 : 0.1), radius: isHovering ? 12 : 8, y: isHovering ? 6 : 4)
+                    .shadow(color: isHovering ? Color.shadowStrong : Color.shadowSoft, radius: isHovering ? 12 : 8, y: isHovering ? 6 : 4)
 
                 iconView
                     .frame(width: size.width - 12, height: size.height - 12)
@@ -115,7 +124,7 @@ private struct ToolboxAppButton: View {
         } else {
             ZStack {
                 RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .fill(Color.black.opacity(0.08))
+                    .fill(Color.neutralHigh.opacity(0.08))
                 Image(systemName: fallbackSymbol)
                     .font(.system(size: 18, weight: .semibold))
                     .foregroundStyle(Color.neonYellow)
@@ -147,8 +156,8 @@ private struct ToolboxAppButton: View {
             .padding(.vertical, 2)
             .background(
                 Capsule()
-                    .fill(app.optionKind == .nativeApp ? Color.neonYellow.opacity(0.9) : Color.black.opacity(0.75))
+                    .fill(app.optionKind == .nativeApp ? Color.neonYellow.opacity(0.9) : Color.cardSurface.opacity(0.85))
             )
-            .foregroundStyle(app.optionKind == .nativeApp ? Color.black : Color.white)
+            .foregroundStyle(app.optionKind == .nativeApp ? Color.accentForeground : Color.neutralHigh)
     }
 }

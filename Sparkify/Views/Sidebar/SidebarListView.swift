@@ -301,7 +301,7 @@ private struct SidebarPromptRow: View {
     private var backgroundShape: some View {
         RoundedRectangle(cornerRadius: 12, style: .continuous)
             .fill(backgroundColor)
-            .shadow(color: interactionActive ? Color.black.opacity(0.2) : Color.clear, radius: 5, x: 0, y: 1)
+            .shadow(color: interactionActive ? Color.shadowSoft.opacity(0.8) : Color.clear, radius: 5, x: 0, y: 1)
     }
 
     private var backgroundColor: Color {

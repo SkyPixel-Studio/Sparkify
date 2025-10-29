@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import SwiftUI
 
 /// Manages user preferences using UserDefaults
 @Observable
@@ -21,6 +22,7 @@ final class PreferencesService {
         static let enabledToolboxApps = "enabledToolboxApps"
         static let toolboxOrder = "toolboxOrder"
         static let showAgentContextInfoAlert = "showAgentContextInfoAlert"
+        static let themePreference = "themePreference"
     }
     
     // MARK: - Properties
@@ -50,6 +52,12 @@ final class PreferencesService {
     var showAgentContextInfoAlert: Bool {
         didSet {
             UserDefaults.standard.set(showAgentContextInfoAlert, forKey: Keys.showAgentContextInfoAlert)
+        }
+    }
+
+    var themePreference: ThemePreference {
+        didSet {
+            UserDefaults.standard.set(themePreference.rawValue, forKey: Keys.themePreference)
         }
     }
 
@@ -94,6 +102,13 @@ final class PreferencesService {
         } else {
             self.showAgentContextInfoAlert = true
         }
+
+        if let storedTheme = UserDefaults.standard.string(forKey: Keys.themePreference),
+           let preference = ThemePreference(rawValue: storedTheme) {
+            self.themePreference = preference
+        } else {
+            self.themePreference = .system
+        }
     }
     
     // MARK: - Methods
@@ -134,6 +149,10 @@ final class PreferencesService {
         let item = current.remove(at: index)
         current.insert(item, at: index + 1)
         toolboxOrder = Self.normalizeToolboxOrder(current)
+    }
+
+    var resolvedColorScheme: ColorScheme? {
+        themePreference.forcedColorScheme
     }
 
     private static func normalizeToolboxOrder(_ proposed: [String]) -> [String] {
