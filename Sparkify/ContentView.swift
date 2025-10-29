@@ -27,6 +27,7 @@ struct ContentView: View {
     @State private var highlightedPromptID: String?
     @State private var showAgentContextExportWarning: Bool = false
     @State private var showAgentContextInfoAlert: Bool = false
+    @State private var columnVisibility: NavigationSplitViewVisibility = .all
 
 
     private var filteredPrompts: [PromptItem] {
@@ -55,7 +56,7 @@ struct ContentView: View {
     }
 
     var body: some View {
-        NavigationSplitView(columnVisibility: .constant(.all)) {
+        NavigationSplitView(columnVisibility: $columnVisibility) {
             SidebarListView(
                 prompts: prompts,
                 presentedPrompt: $presentedPrompt,
