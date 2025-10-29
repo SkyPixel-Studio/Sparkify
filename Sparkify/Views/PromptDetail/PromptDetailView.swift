@@ -9,6 +9,28 @@ import MarkdownUI
 import SwiftData
 import SwiftUI
 
+private extension TemplateEngine.PlaceholderDescriptor.Kind {
+    var paramType: PromptParamType {
+        switch self {
+        case .text:
+            return .text
+        case .enumeration:
+            return .enumeration
+        }
+    }
+}
+
+private extension PromptParamType {
+    var displayName: String {
+        switch self {
+        case .text:
+            return String(localized: "param_type_text", defaultValue: "文本")
+        case .enumeration:
+            return String(localized: "param_type_enum", defaultValue: "枚举")
+        }
+    }
+}
+
 struct PromptDetailView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
@@ -607,20 +629,105 @@ struct PromptDetailView: View {
                 VStack(spacing: 16) {
                     ForEach(Array(draft.params.enumerated()), id: \.element.id) { index, param in
                         VStack(alignment: .leading, spacing: 10) {
-                            Text("{\(param.key)}")
-                                .font(.system(size: 13, weight: .semibold, design: .monospaced))
-                                .foregroundStyle(Color.appForeground)
+                            HStack(alignment: .center, spacing: 12) {
+                                Text("{\(param.key)}")
+                                    .font(.system(size: 13, weight: .semibold, design: .monospaced))
+                                    .foregroundStyle(Color.appForeground)
 
-                            TextField(String(localized: "default_value", defaultValue: "默认值"), text: Binding(
-                                get: { draft.params[index].defaultValue ?? "" },
-                                set: {
-                                    let trimmedValue = $0.trimmingCharacters(in: .whitespacesAndNewlines)
-                                    draft.params[index].defaultValue = trimmedValue.isEmpty ? nil : trimmedValue
+                                Spacer()
+
+                                Picker(
+                                    String(localized: "param_type", defaultValue: "参数类型"),
+                                    selection: Binding(
+                                        get: { draft.params[index].type },
+                                        set: { newType in
+                                            guard draft.params[index].type != newType else { return }
+                                            draft.params[index].type = newType
+                                            switch newType {
+                                            case .text:
+                                                draft.params[index].options = []
+                                                rewritePlaceholder(for: index)
+                                            case .enumeration:
+                                                var options = draft.params[index].options
+                                                let trimmedDefault = draft.params[index].defaultValue?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+                                                if options.isEmpty {
+                                                    if trimmedDefault.isEmpty == false {
+                                                        options = [trimmedDefault]
+                                                    } else {
+                                                        options = ["option1", "option2"]
+                                                    }
+                                                }
+                                                draft.params[index].options = options
+                                                if trimmedDefault.isEmpty == false, options.contains(trimmedDefault) == false {
+                                                    draft.params[index].defaultValue = nil
+                                                }
+                                                rewritePlaceholder(for: index)
+                                            }
+                                        }
+                                    )
+                                ) {
+                                    ForEach(PromptParamType.allCases, id: \.self) { type in
+                                        Text(type.displayName).tag(type)
+                                    }
                                 }
-                            ), prompt: Text(String(localized: "empty_means_no_default", defaultValue: "留空代表默认不填")))
-                            .textFieldStyle(.roundedBorder)
-                            .font(.system(size: 14, weight: .regular, design: .monospaced))
-                            .autocorrectionDisabled()
+                                .pickerStyle(.segmented)
+                                .frame(width: 220)
+                            }
+
+                            switch draft.params[index].type {
+                            case .text:
+                                TextField(
+                                    String(localized: "default_value", defaultValue: "默认值"),
+                                    text: Binding(
+                                        get: { draft.params[index].defaultValue ?? "" },
+                                        set: {
+                                            let trimmedValue = $0.trimmingCharacters(in: .whitespacesAndNewlines)
+                                            draft.params[index].defaultValue = trimmedValue.isEmpty ? nil : trimmedValue
+                                        }
+                                    ),
+                                    prompt: Text(String(localized: "empty_means_no_default", defaultValue: "留空代表默认不填"))
+                                )
+                                .textFieldStyle(.roundedBorder)
+                                .font(.system(size: 14, weight: .regular, design: .monospaced))
+                                .autocorrectionDisabled()
+                            case .enumeration:
+                                VStack(alignment: .leading, spacing: 8) {
+                                    TextField(
+                                        String(localized: "enum_options_prompt", defaultValue: "使用 | 分隔的枚举选项，例如 apple|banana"),
+                                        text: Binding(
+                                            get: { draft.params[index].options.joined(separator: "|") },
+                                            set: { newValue in
+                                                let parsed = parseOptionsInput(newValue)
+                                                draft.params[index].options = parsed
+                                                if let defaultValue = draft.params[index].defaultValue,
+                                                   parsed.contains(defaultValue) == false {
+                                                    draft.params[index].defaultValue = nil
+                                                }
+                                                rewritePlaceholder(for: index)
+                                            }
+                                        )
+                                    )
+                                    .textFieldStyle(.roundedBorder)
+                                    .font(.system(size: 14, weight: .regular, design: .monospaced))
+                                    .autocorrectionDisabled()
+
+                                    Picker(
+                                        String(localized: "enum_default_value", defaultValue: "默认枚举值"),
+                                        selection: Binding<String?>(
+                                            get: { draft.params[index].defaultValue },
+                                            set: { newValue in
+                                                draft.params[index].defaultValue = newValue
+                                            }
+                                        )
+                                    ) {
+                                        Text(String(localized: "no_default_value", defaultValue: "无默认值")).tag(String?.none)
+                                        ForEach(draft.params[index].options, id: \.self) { option in
+                                            Text(option).tag(String?.some(option))
+                                        }
+                                    }
+                                    .pickerStyle(.menu)
+                                }
+                            }
 
                             Text(parameterStatusText(for: draft.params[index]))
                                 .font(.caption2)
@@ -701,29 +808,97 @@ struct PromptDetailView: View {
 
     private func parameterStatusText(for param: ParamDraft) -> String {
         let defaultValue = param.defaultValue?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        
-        if defaultValue.isEmpty {
-            return String(localized: "no_default_value_set", defaultValue: "未设置默认值，在模板卡片使用时会高亮提示补全。")
+
+        switch param.type {
+        case .text:
+            if defaultValue.isEmpty {
+                return String(localized: "no_default_value_set", defaultValue: "未设置默认值，在模板卡片使用时会高亮提示补全。")
+            }
+            return String(format: String(localized: "param_default_value", defaultValue: "默认值：%@"), defaultValue)
+        case .enumeration:
+            let optionsSummary = param.options.isEmpty
+                ? String(localized: "enum_options_missing", defaultValue: "该枚举尚未配置选项。")
+                : String(format: String(localized: "enum_options_summary", defaultValue: "枚举选项：%@"), param.options.joined(separator: "、"))
+
+            if defaultValue.isEmpty {
+                let missingDefault = String(localized: "enum_no_default_hint", defaultValue: "未设置默认值，Workspace 中需手动选择。")
+                return "\(optionsSummary)\n\(missingDefault)"
+            } else {
+                return "\(optionsSummary)\n" + String(format: String(localized: "param_default_value", defaultValue: "默认值：%@"), defaultValue)
+            }
         }
-        
-        return String(format: String(localized: "param_default_value", defaultValue: "默认值：%@"), defaultValue)
     }
 
     private func syncDraftParams() {
-        let keys = TemplateEngine.placeholders(in: draft.body)
+        let descriptors = TemplateEngine.placeholderDescriptors(in: draft.body)
         var existing = Dictionary(uniqueKeysWithValues: draft.params.map { ($0.key, $0) })
         var ordered: [ParamDraft] = []
 
-        for key in keys {
-            if let current = existing.removeValue(forKey: key) {
+        for descriptor in descriptors {
+            if var current = existing.removeValue(forKey: descriptor.key) {
+                current.type = descriptor.kind.paramType
+                current.options = descriptor.options
+                if current.type == .enumeration,
+                   let defaultValue = current.defaultValue,
+                   descriptor.options.contains(defaultValue) == false {
+                    current.defaultValue = nil
+                }
                 ordered.append(current)
-            } else {
-                let created = ParamDraft(key: key, defaultValue: nil)
-                ordered.append(created)
+                continue
             }
+
+            ordered.append(
+                ParamDraft(
+                    key: descriptor.key,
+                    defaultValue: nil,
+                    type: descriptor.kind.paramType,
+                    options: descriptor.options
+                )
+            )
         }
 
         draft.params = ordered
+    }
+
+    private func parseOptionsInput(_ input: String) -> [String] {
+        let components = input
+            .split(separator: "|", omittingEmptySubsequences: false)
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+        var seen = Set<String>()
+        var normalized: [String] = []
+        for component in components {
+            guard component.isEmpty == false else { continue }
+            if seen.insert(component).inserted {
+                normalized.append(component)
+            }
+        }
+        return normalized
+    }
+
+    private func rewritePlaceholder(for index: Int) {
+        guard draft.params.indices.contains(index) else { return }
+        let param = draft.params[index]
+        let descriptor: TemplateEngine.PlaceholderDescriptor
+        switch param.type {
+        case .text:
+            descriptor = TemplateEngine.PlaceholderDescriptor(
+                key: param.key,
+                kind: .text,
+                literalContent: param.key
+            )
+        case .enumeration:
+            descriptor = TemplateEngine.PlaceholderDescriptor(
+                key: param.key,
+                kind: .enumeration(options: param.options),
+                literalContent: param.key
+            )
+        }
+        let rewritten = TemplateEngine.rewrite(template: draft.body, with: [descriptor])
+        if rewritten != draft.body {
+            draft.body = rewritten
+        } else {
+            syncDraftParams()
+        }
     }
 
     private func saveDraftAndDismiss() {
@@ -761,12 +936,28 @@ struct PromptDetailView: View {
             let normalizedDefault = param.defaultValue
             if let current = existing.removeValue(forKey: param.key) {
                 current.defaultValue = normalizedDefault
+                current.type = param.type
+                current.options = param.options
+
+                if param.type == .enumeration {
+                    if let defaultValue = current.defaultValue, param.options.contains(defaultValue) == false {
+                        current.defaultValue = nil
+                    }
+
+                    let trimmedValue = current.value.trimmingCharacters(in: .whitespacesAndNewlines)
+                    if trimmedValue.isEmpty == false, param.options.contains(trimmedValue) == false {
+                        current.value = ""
+                    }
+                }
+
                 ordered.append(current)
             } else {
                 let created = ParamKV(
                     key: param.key,
                     value: "",
                     defaultValue: normalizedDefault,
+                    type: param.type,
+                    options: param.options,
                     owner: prompt
                 )
                 ordered.append(created)
@@ -859,6 +1050,8 @@ struct PromptDetailView: View {
     private struct ParamDraft: Identifiable, Equatable {
         let key: String
         var defaultValue: String?
+        var type: PromptParamType
+        var options: [String]
 
         var id: String { key }
     }
@@ -886,7 +1079,12 @@ struct PromptDetailView: View {
             self.pinned = prompt.pinned
             self.tags = PromptTagPolicy.normalize(prompt.tags, for: prompt.kind)
             self.params = prompt.params.map { param in
-                ParamDraft(key: param.key, defaultValue: param.defaultValue)
+                ParamDraft(
+                    key: param.key,
+                    defaultValue: param.defaultValue,
+                    type: param.type,
+                    options: param.options
+                )
             }
         }
 
@@ -903,6 +1101,8 @@ struct PromptDetailView: View {
             for draftParam in params {
                 guard let modelParam = lookup[draftParam.key] else { return true }
                 if draftParam.defaultValue != modelParam.defaultValue { return true }
+                if draftParam.type != modelParam.type { return true }
+                if draftParam.options != modelParam.options { return true }
             }
             return false
         }

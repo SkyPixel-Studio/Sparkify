@@ -29,7 +29,7 @@ struct PromptTransferService {
             throw PromptTransferError.invalidFormat(underlying: error)
         }
 
-        guard package.version == currentVersion else {
+        guard package.version <= currentVersion else {
             throw PromptTransferError.unsupportedVersion(package.version)
         }
 
@@ -97,10 +97,14 @@ struct PromptTransferService {
             let param = existingParamsByKey.removeValue(forKey: paramPayload.key) ?? ParamKV(
                 key: paramPayload.key,
                 value: paramPayload.value,
-                defaultValue: paramPayload.defaultValue
+                defaultValue: paramPayload.defaultValue,
+                type: paramPayload.type,
+                options: paramPayload.options
             )
-            param.value = paramPayload.value
-            param.defaultValue = paramPayload.defaultValue
+            param.type = paramPayload.type
+            param.options = paramPayload.options
+            param.value = sanitizedValue(paramPayload.value, for: paramPayload.type, options: paramPayload.options)
+            param.defaultValue = sanitizedDefault(paramPayload.defaultValue, for: paramPayload.type, options: paramPayload.options)
             if param.owner !== prompt {
                 param.owner = prompt
             }
@@ -127,14 +131,34 @@ struct PromptTransferService {
             createdAt: payload.createdAt,
             updatedAt: payload.updatedAt,
             params: payload.params.map {
-                ParamKV(key: $0.key, value: $0.value, defaultValue: $0.defaultValue)
+                ParamKV(
+                    key: $0.key,
+                    value: sanitizedValue($0.value, for: $0.type, options: $0.options),
+                    defaultValue: sanitizedDefault($0.defaultValue, for: $0.type, options: $0.options),
+                    type: $0.type,
+                    options: $0.options
+                )
             },
             attachments: [],
             kind: payload.kind
         )
     }
 
-    private static let currentVersion = 1
+    private static func sanitizedValue(_ raw: String, for type: PromptParamType, options: [String]) -> String {
+        guard type == .enumeration else { return raw }
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmed.isEmpty == false, options.contains(trimmed) else { return "" }
+        return trimmed
+    }
+
+    private static func sanitizedDefault(_ raw: String?, for type: PromptParamType, options: [String]) -> String? {
+        guard let raw, raw.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false else { return nil }
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard type == .enumeration else { return trimmed }
+        return options.contains(trimmed) ? trimmed : nil
+    }
+
+    private static let currentVersion = 2
 }
 
 // MARK: - Codable structures
@@ -168,7 +192,9 @@ private struct PromptPayload: Codable {
             ParamPayload(
                 key: $0.key,
                 value: $0.value,
-                defaultValue: $0.defaultValue ?? $0.value
+                defaultValue: $0.defaultValue ?? $0.value,
+                type: $0.type,
+                options: $0.options
             )
         }
         kind = prompt.kind
@@ -222,15 +248,72 @@ private struct ParamPayload: Codable {
     let key: String
     let value: String
     let defaultValue: String?
+    let type: PromptParamType
+    let options: [String]
 
-    init(key: String, value: String, defaultValue: String?) {
+    init(key: String, value: String, defaultValue: String?, type: PromptParamType, options: [String]) {
         self.key = key
         self.value = value
-        if let defaultValue, defaultValue.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false {
-            self.defaultValue = defaultValue
+        self.type = type
+        self.options = ParamPayload.normalize(options)
+        if let defaultValue,
+           defaultValue.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false {
+            let trimmed = defaultValue.trimmingCharacters(in: .whitespacesAndNewlines)
+            if type == .enumeration, self.options.contains(trimmed) == false {
+                self.defaultValue = nil
+            } else {
+                self.defaultValue = trimmed
+            }
         } else {
             self.defaultValue = nil
         }
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case key
+        case value
+        case defaultValue
+        case type
+        case options
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        key = try container.decode(String.self, forKey: .key)
+        value = try container.decode(String.self, forKey: .value)
+        defaultValue = try container.decodeIfPresent(String.self, forKey: .defaultValue)
+        if let rawType = try container.decodeIfPresent(String.self, forKey: .type),
+           let decoded = PromptParamType(rawValue: rawType) {
+            type = decoded
+        } else {
+            type = .text
+        }
+        let decodedOptions = try container.decodeIfPresent([String].self, forKey: .options) ?? []
+        options = ParamPayload.normalize(decodedOptions)
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(key, forKey: .key)
+        try container.encode(value, forKey: .value)
+        try container.encodeIfPresent(defaultValue, forKey: .defaultValue)
+        try container.encode(type.rawValue, forKey: .type)
+        if options.isEmpty == false {
+            try container.encode(options, forKey: .options)
+        }
+    }
+
+    private static func normalize(_ options: [String]) -> [String] {
+        var seen = Set<String>()
+        var normalized: [String] = []
+        for option in options {
+            let trimmed = option.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard trimmed.isEmpty == false else { continue }
+            if seen.insert(trimmed).inserted {
+                normalized.append(trimmed)
+            }
+        }
+        return normalized
     }
 }
 

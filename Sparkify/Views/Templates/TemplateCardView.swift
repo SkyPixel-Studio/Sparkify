@@ -54,7 +54,7 @@ struct TemplateCardView: View {
     let isHighlighted: Bool
 
     @State private var showCopiedHUD = false
-    @State private var isMarkdownPreview = false
+    @State private var isMarkdownPreview = true
     @State private var contentMode: CardContentMode = .template
     @FocusState private var focusedParam: ParamFocusTarget?
     @State private var lastFocusedParam: ParamFocusTarget?
@@ -111,6 +111,9 @@ struct TemplateCardView: View {
     
     /// 判断参数值是否应该使用多行输入框
     private func shouldUseMultilineInput(_ param: ParamKV) -> Bool {
+        if param.type == .enumeration {
+            return false
+        }
         let content = layoutCandidateContent(for: param)
         return content.count > 16 || content.contains("\n")
     }
@@ -758,7 +761,100 @@ struct TemplateCardView: View {
                     let isFocused = focusedParam == focusTarget
 
                     Group {
-                        if useMultiline {
+                        if paramModel.type == .enumeration {
+                            HStack(spacing: 10) {
+                                Text("\(paramModel.key)=")
+                                    .font(.caption.weight(.semibold))
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 4)
+                                    .background(RoundedRectangle(cornerRadius: 8).fill(Color.neonYellow.opacity(0.4)))
+                                    .foregroundStyle(Color.black)
+
+                                if paramModel.options.isEmpty {
+                                    Text(String(localized: "enum_options_empty_hint", defaultValue: "请在详情页配置枚举选项"))
+                                        .font(.system(size: 12, weight: .regular))
+                                        .foregroundStyle(Color.secondary)
+                                        .padding(.vertical, 6)
+                                } else {
+                                    let textBinding = binding(for: paramModel)
+                                    let selectionBinding = Binding<String?>(
+                                        get: {
+                                            let trimmed = textBinding.wrappedValue.trimmingCharacters(in: .whitespacesAndNewlines)
+                                            return trimmed.isEmpty ? nil : trimmed
+                                        },
+                                        set: { newValue in
+                                            textBinding.wrappedValue = newValue ?? ""
+                                        }
+                                    )
+                                    Menu {
+                                        Button {
+                                            selectionBinding.wrappedValue = nil
+                                        } label: {
+                                            Label(String(localized: "clear_selection", defaultValue: "清空选择"), systemImage: "minus.circle")
+                                        }
+                                        Divider()
+                                        ForEach(paramModel.options, id: \.self) { option in
+                                            Button {
+                                                selectionBinding.wrappedValue = option
+                                            } label: {
+                                                if selectionBinding.wrappedValue == option {
+                                                    Label(option, systemImage: "checkmark")
+                                                } else {
+                                                    Text(option)
+                                                }
+                                            }
+                                        }
+                                    } label: {
+                                        HStack {
+                                            Text(selectionBinding.wrappedValue ?? String(localized: "enum_select_placeholder", defaultValue: "请选择"))
+                                                .font(.system(size: 13, weight: .regular, design: .monospaced))
+                                                .foregroundStyle(selectionBinding.wrappedValue == nil ? Color.secondary : Color.appForeground)
+                                            Spacer()
+                                        }
+                                        .padding(.vertical, 6)
+                                        .padding(.horizontal, 10)
+                                        .background(
+                                            RoundedRectangle(cornerRadius: 8)
+                                                .fill(Color.white)
+                                        )
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: 8)
+                                                .stroke(isMissing ? Color.neonYellow : Color.cardOutline, lineWidth: isMissing ? 1.6 : 1)
+                                        )
+                                        .shadow(color: isMissing ? Color.neonYellow.opacity(0.22) : Color.black.opacity(0.04), radius: isMissing ? 6 : 1.2, y: isMissing ? 3 : 1)
+                                    }
+                                }
+
+                                Button {
+                                    paramToReset = paramModel
+                                } label: {
+                                    let isHovered = hoveredResetParamID == paramModel.persistentModelID
+                                    Image(systemName: "arrow.counterclockwise")
+                                        .font(.system(size: 11, weight: .semibold))
+                                        .foregroundStyle(Color.appForeground.opacity(isHovered ? 0.8 : 0.6))
+                                        .frame(width: 24, height: 24)
+                                        .background(Circle().fill(Color.cardSurface.opacity(isHovered ? 1.0 : 0.8)))
+                                        .overlay(Circle().stroke(Color.cardOutline.opacity(isHovered ? 1.0 : 0.8), lineWidth: 1))
+                                }
+                                .buttonStyle(.plain)
+                                .onHover { hovering in
+                                    withAnimation(interactionAnimation) {
+                                        hoveredResetParamID = hovering ? paramModel.persistentModelID : nil
+                                    }
+                                }
+                                .scaleEffect(hoveredResetParamID == paramModel.persistentModelID ? 1.08 : 1.0)
+                                .animation(interactionAnimation, value: hoveredResetParamID == paramModel.persistentModelID)
+                                .help(String(localized: "reset_to_default", defaultValue: "重置为默认值"))
+                            }
+                            .transition(.opacity)
+                            .onAppear {
+                                primeDraft(for: paramModel)
+                                restoreFocusIfNeeded(for: paramModel)
+                            }
+                            .onChange(of: paramModel.value) { newValue in
+                                syncDraftWithModelValue(newValue, for: paramModel)
+                            }
+                        } else if useMultiline {
                             // 多行输入：垂直布局
                             VStack(alignment: .leading, spacing: 8) {
                                 HStack(spacing: 10) {
@@ -1035,13 +1131,13 @@ struct TemplateCardView: View {
         }
 
         let raw = prompt.body
-        let keys = Set(TemplateEngine.placeholders(in: raw))
-        for key in keys {
-            let placeholder = "{\(key)}"
+        let descriptors = TemplateEngine.placeholderDescriptors(in: raw)
+        for descriptor in descriptors {
+            let placeholder = "{\(descriptor.literalContent)}"
             var searchStart = raw.startIndex
 
             while searchStart < raw.endIndex,
-                let range = raw.range(of: placeholder, range: searchStart..<raw.endIndex) {
+                  let range = raw.range(of: placeholder, range: searchStart..<raw.endIndex) {
                 if let lower = AttributedString.Index(range.lowerBound, within: attributed),
                    let upper = AttributedString.Index(range.upperBound, within: attributed) {
                     let highlightRange = lower..<upper
@@ -1321,13 +1417,25 @@ struct TemplateCardView: View {
     }
 
     private func applyDraft(_ value: String, to param: ParamKV) {
-        guard param.value != value else { return }
+        let sanitized: String
+        if param.type == .enumeration {
+            let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+            if trimmed.isEmpty || param.options.contains(trimmed) == false {
+                sanitized = ""
+            } else {
+                sanitized = trimmed
+            }
+        } else {
+            sanitized = value
+        }
+
+        guard param.value != sanitized else { return }
         logParamEvent(
             "applyDraft",
             param: param,
-            extra: "from=\(param.value.count) to=\(value.count)"
+            extra: "from=\(param.value.count) to=\(sanitized.count)"
         )
-        param.value = value
+        param.value = sanitized
         persistChange(reason: "param:\(param.key)")
     }
 
@@ -1458,17 +1566,34 @@ struct TemplateCardView: View {
     }
 
     private func refreshParamsFromTemplate() {
-        let keys = TemplateEngine.placeholders(in: prompt.body)
+        let descriptors = TemplateEngine.placeholderDescriptors(in: prompt.body)
         var existing = Dictionary(uniqueKeysWithValues: prompt.params.map { ($0.key, $0) })
         var ordered: [ParamKV] = []
 
-        for key in keys {
-            if let param = existing.removeValue(forKey: key) {
+        for descriptor in descriptors {
+            if let param = existing.removeValue(forKey: descriptor.key) {
+                apply(descriptor: descriptor, to: param)
                 ordered.append(param)
-            } else {
-                let created = ParamKV(key: key, value: "", owner: prompt)
-                ordered.append(created)
+                continue
             }
+
+            let type: PromptParamType
+            switch descriptor.kind {
+            case .text:
+                type = .text
+            case .enumeration:
+                type = .enumeration
+            }
+
+            let created = ParamKV(
+                key: descriptor.key,
+                value: "",
+                defaultValue: nil,
+                type: type,
+                options: descriptor.options,
+                owner: prompt
+            )
+            ordered.append(created)
         }
 
         for removed in existing.values {
@@ -1479,6 +1604,24 @@ struct TemplateCardView: View {
         pendingSaveTasks.values.forEach { $0.cancel() }
         pendingSaveTasks.removeAll()
         paramDrafts.removeAll()
+    }
+
+    private func apply(descriptor: TemplateEngine.PlaceholderDescriptor, to param: ParamKV) {
+        switch descriptor.kind {
+        case .text:
+            param.type = .text
+            param.options = []
+        case .enumeration(let options):
+            param.type = .enumeration
+            param.options = options
+            if let defaultValue = param.defaultValue, options.contains(defaultValue) == false {
+                param.defaultValue = nil
+            }
+            let current = param.value.trimmingCharacters(in: .whitespacesAndNewlines)
+            if current.isEmpty == false, options.contains(current) == false {
+                param.value = ""
+            }
+        }
     }
 
     private func showCopiedHUDFeedback() {
@@ -1504,7 +1647,17 @@ struct TemplateCardView: View {
     private func resetParam(_ param: ParamKV) {
         withAnimation {
             cancelPendingSave(for: param.persistentModelID)
-            let newValue = param.defaultValue ?? ""
+            let candidate = param.defaultValue ?? ""
+            let newValue: String
+            if param.type == .enumeration {
+                if candidate.isEmpty == false, param.options.contains(candidate) {
+                    newValue = candidate
+                } else {
+                    newValue = ""
+                }
+            } else {
+                newValue = candidate
+            }
             param.value = newValue
             paramDrafts[param.persistentModelID] = newValue
             persistChange()
@@ -1516,7 +1669,17 @@ struct TemplateCardView: View {
         withAnimation {
             for param in prompt.params {
                 cancelPendingSave(for: param.persistentModelID)
-                let newValue = param.defaultValue ?? ""
+                let candidate = param.defaultValue ?? ""
+                let newValue: String
+                if param.type == .enumeration {
+                    if candidate.isEmpty == false, param.options.contains(candidate) {
+                        newValue = candidate
+                    } else {
+                        newValue = ""
+                    }
+                } else {
+                    newValue = candidate
+                }
                 param.value = newValue
                 paramDrafts[param.persistentModelID] = newValue
             }

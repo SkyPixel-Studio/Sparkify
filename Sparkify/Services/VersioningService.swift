@@ -26,7 +26,9 @@ enum VersioningService {
                     RevisionParamSnapshot(
                         key: $0.key,
                         value: $0.value,
-                        defaultValue: $0.defaultValue
+                        defaultValue: $0.defaultValue,
+                        type: $0.type,
+                        options: $0.options
                     )
                 }
             )
@@ -73,6 +75,10 @@ enum VersioningService {
         let change: ChangeKind
         let valueSegments: [TextDiffSegment]
         let defaultValueSegments: [TextDiffSegment]
+        let previousType: PromptParamType?
+        let currentType: PromptParamType?
+        let optionsAdded: [String]
+        let optionsRemoved: [String]
     }
 
     struct PromptDiff {
@@ -278,25 +284,49 @@ enum VersioningService {
                     key: key,
                     change: .added,
                     valueSegments: textDiffSegments(from: "", to: newValue.value),
-                    defaultValueSegments: textDiffSegments(from: "", to: newValue.defaultValue ?? "")
+                    defaultValueSegments: textDiffSegments(from: "", to: newValue.defaultValue ?? ""),
+                    previousType: nil,
+                    currentType: newValue.type,
+                    optionsAdded: newValue.options,
+                    optionsRemoved: []
                 )
             case (let oldValue?, nil):
                 return ParameterDiff(
                     key: key,
                     change: .removed,
                     valueSegments: textDiffSegments(from: oldValue.value, to: ""),
-                    defaultValueSegments: textDiffSegments(from: oldValue.defaultValue ?? "", to: "")
+                    defaultValueSegments: textDiffSegments(from: oldValue.defaultValue ?? "", to: ""),
+                    previousType: oldValue.type,
+                    currentType: nil,
+                    optionsAdded: [],
+                    optionsRemoved: oldValue.options
                 )
             case (let oldValue?, let newValue?):
                 let valueSegments = textDiffSegments(from: oldValue.value, to: newValue.value)
                 let defaultDiff = textDiffSegments(from: oldValue.defaultValue ?? "", to: newValue.defaultValue ?? "")
-                let unchanged = oldValue.value == newValue.value && (oldValue.defaultValue ?? "") == (newValue.defaultValue ?? "")
+                let oldOptions = oldValue.options
+                let newOptions = newValue.options
+                let optionsAdded = newOptions.filter { newOption in
+                    oldOptions.contains(newOption) == false
+                }
+                let optionsRemoved = oldOptions.filter { oldOption in
+                    newOptions.contains(oldOption) == false
+                }
+                let unchanged = oldValue.value == newValue.value
+                    && (oldValue.defaultValue ?? "") == (newValue.defaultValue ?? "")
+                    && oldValue.type == newValue.type
+                    && optionsAdded.isEmpty
+                    && optionsRemoved.isEmpty
                 let change: ParameterDiff.ChangeKind = unchanged ? .unchanged : .modified
                 return ParameterDiff(
                     key: key,
                     change: change,
                     valueSegments: valueSegments,
-                    defaultValueSegments: defaultDiff
+                    defaultValueSegments: defaultDiff,
+                    previousType: oldValue.type,
+                    currentType: newValue.type,
+                    optionsAdded: optionsAdded,
+                    optionsRemoved: optionsRemoved
                 )
             }
         }

@@ -47,4 +47,31 @@ final class TemplateEngineTests: XCTestCase {
         XCTAssertEqual(result.rendered, "{name} meets {role} and {name} learns.")
         XCTAssertEqual(result.missingKeys, ["name", "role"])
     }
+
+    func testPlaceholderDescriptorsParseEnumeration() {
+        let template = "Choose {fruit:apple|banana|orange} wisely."
+        let descriptors = TemplateEngine.placeholderDescriptors(in: template)
+        XCTAssertEqual(descriptors.count, 1)
+        let descriptor = try XCTUnwrap(descriptors.first)
+        XCTAssertEqual(descriptor.key, "fruit")
+        XCTAssertEqual(descriptor.options, ["apple", "banana", "orange"])
+    }
+
+    func testRenderEnumerationUsesProvidedValue() {
+        let template = "I love {fruit:apple|banana}"
+        let result = TemplateEngine.render(template: template, values: ["fruit": "banana"])
+        XCTAssertEqual(result.rendered, "I love banana")
+        XCTAssertTrue(result.missingKeys.isEmpty)
+    }
+
+    func testRewriteUpdatesEnumerationSyntax() {
+        let template = "Pick {fruit} today and {fruit} tomorrow."
+        let descriptor = TemplateEngine.PlaceholderDescriptor(
+            key: "fruit",
+            kind: .enumeration(options: ["apple", "banana"]),
+            literalContent: "fruit"
+        )
+        let rewritten = TemplateEngine.rewrite(template: template, with: [descriptor])
+        XCTAssertEqual(rewritten, "Pick {fruit:apple|banana} today and {fruit:apple|banana} tomorrow.")
+    }
 }

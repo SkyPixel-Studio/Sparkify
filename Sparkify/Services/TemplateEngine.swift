@@ -6,24 +6,68 @@ struct TemplateEngine {
         let missingKeys: [String]
     }
 
-    static func placeholders(in template: String) -> [String] {
-        let sanitized = sanitize(template)
-        guard let regex = placeholderRegex else { return [] }
-        let range = NSRange(sanitized.startIndex..<sanitized.endIndex, in: sanitized)
-        let matches = regex.matches(in: sanitized, range: range)
+    struct PlaceholderDescriptor: Equatable {
+        enum Kind: Equatable {
+            case text
+            case enumeration(options: [String])
+        }
 
-        var seen = Set<String>()
-        var ordered: [String] = []
+        let key: String
+        let kind: Kind
+        /// 原始占位内容（未归一化、去掉花括号）
+        let literalContent: String
 
-        for match in matches {
-            guard match.numberOfRanges == 2,
-                  let range = Range(match.range(at: 1), in: sanitized) else { continue }
-            let key = String(sanitized[range])
-            if seen.insert(key).inserted {
-                ordered.append(key)
+        var options: [String] {
+            if case let .enumeration(options) = kind {
+                return options
+            }
+            return []
+        }
+
+        fileprivate var normalizedPlaceholderSyntax: String {
+            switch kind {
+            case .text:
+                return "{\(key)}"
+            case .enumeration(let options):
+                guard options.isEmpty == false else { return "{\(key)}" }
+                let joined = options.joined(separator: "|")
+                return "{\(key):\(joined)}"
             }
         }
-        return ordered
+    }
+
+    static func placeholders(in template: String) -> [String] {
+        placeholderDescriptors(in: template).map(\.key)
+    }
+
+    static func placeholderDescriptors(in template: String) -> [PlaceholderDescriptor] {
+        let sanitized = sanitize(template)
+        var descriptors: [PlaceholderDescriptor] = []
+        var seenKeys = Set<String>()
+
+        var index = sanitized.startIndex
+        while index < sanitized.endIndex {
+            let character = sanitized[index]
+            if character == "{" {
+                let nextIndex = sanitized.index(after: index)
+                if nextIndex < sanitized.endIndex, sanitized[nextIndex] == "{" {
+                    index = sanitized.index(index, offsetBy: 2)
+                    continue
+                }
+
+                if let (descriptor, advancedIndex) = readPlaceholder(in: sanitized, from: index) {
+                    if seenKeys.insert(descriptor.key).inserted {
+                        descriptors.append(descriptor)
+                    }
+                    index = advancedIndex
+                    continue
+                }
+            }
+
+            index = sanitized.index(after: index)
+        }
+
+        return descriptors
     }
 
     static func render(template: String, values: [String: String]) -> RenderResult {
@@ -44,13 +88,14 @@ struct TemplateEngine {
                     continue
                 }
 
-                if let (placeholder, advancedIndex) = readPlaceholder(in: template, from: index) {
-                    if let value = values[placeholder] {
+                if let (descriptor, advancedIndex) = readPlaceholder(in: template, from: index) {
+                    let key = descriptor.key
+                    if let value = values[key] {
                         output.append(value)
                     } else {
-                        output.append("{\(placeholder)}")
-                        if missingSet.insert(placeholder).inserted {
-                            missingOrdered.append(placeholder)
+                        output.append(descriptor.normalizedPlaceholderSyntax)
+                        if missingSet.insert(key).inserted {
+                            missingOrdered.append(key)
                         }
                     }
                     index = advancedIndex
@@ -87,28 +132,121 @@ struct TemplateEngine {
             .replacingOccurrences(of: "}}", with: "}")
     }
 
-    private static func readPlaceholder(in template: String, from start: String.Index) -> (String, String.Index)? {
+    static func rewrite(template: String, with descriptors: [PlaceholderDescriptor]) -> String {
+        let lookup = Dictionary(uniqueKeysWithValues: descriptors.map { ($0.key, $0) })
+        var output = ""
+        var index = template.startIndex
+
+        while index < template.endIndex {
+            let character = template[index]
+            if character == "{" {
+                let nextIndex = template.index(after: index)
+                if nextIndex < template.endIndex, template[nextIndex] == "{" {
+                    output.append("{")
+                    index = template.index(index, offsetBy: 2)
+                    continue
+                }
+
+                if let (descriptor, advancedIndex) = readPlaceholder(in: template, from: index) {
+                    if let replacement = lookup[descriptor.key] {
+                        output.append(replacement.normalizedPlaceholderSyntax)
+                    } else {
+                        output.append(descriptor.normalizedPlaceholderSyntax)
+                    }
+                    index = advancedIndex
+                    continue
+                }
+            }
+
+            if character == "}" {
+                let nextIndex = template.index(after: index)
+                if nextIndex < template.endIndex, template[nextIndex] == "}" {
+                    output.append("}")
+                    index = template.index(index, offsetBy: 2)
+                } else {
+                    output.append("}")
+                    index = template.index(after: index)
+                }
+                continue
+            }
+
+            output.append(character)
+            index = template.index(after: index)
+        }
+
+        return output
+    }
+
+    private static func readPlaceholder(in template: String, from start: String.Index) -> (PlaceholderDescriptor, String.Index)? {
         var current = template.index(after: start)
         if current >= template.endIndex { return nil }
 
-        var key = ""
+        var buffer = ""
 
         while current < template.endIndex {
             let character = template[current]
 
             if character == "}" {
-                return key.isEmpty ? nil : (key, template.index(after: current))
+                guard let descriptor = makeDescriptor(from: buffer) else { return nil }
+                return (descriptor, template.index(after: current))
             }
 
-            guard character.isLetter || character.isNumber || character == "_" else {
+            if character == "{" || character.isNewline {
                 return nil
             }
 
-            key.append(character)
+            buffer.append(character)
             current = template.index(after: current)
         }
 
         return nil
+    }
+
+    private static func makeDescriptor(from rawContent: String) -> PlaceholderDescriptor? {
+        let trimmedContent = rawContent.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmedContent.isEmpty == false else { return nil }
+
+        let parts = trimmedContent.split(separator: ":", maxSplits: 1, omittingEmptySubsequences: false)
+        guard let rawKey = parts.first?.trimmingCharacters(in: .whitespacesAndNewlines),
+              rawKey.isEmpty == false,
+              isValidKey(rawKey) else {
+            return nil
+        }
+
+        if parts.count == 1 {
+            return PlaceholderDescriptor(key: rawKey, kind: .text, literalContent: rawContent)
+        }
+
+        let optionsString = String(parts[1])
+        let parsedOptions = parseOptions(optionsString)
+
+        if parsedOptions.isEmpty {
+            return PlaceholderDescriptor(key: rawKey, kind: .text, literalContent: rawContent)
+        }
+
+        return PlaceholderDescriptor(key: rawKey, kind: .enumeration(options: parsedOptions), literalContent: rawContent)
+    }
+
+    private static func parseOptions(_ optionsString: String) -> [String] {
+        let candidates = optionsString
+            .split(separator: "|", omittingEmptySubsequences: false)
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+        var seen = Set<String>()
+        var normalized: [String] = []
+        for candidate in candidates {
+            guard candidate.isEmpty == false else { continue }
+            if seen.insert(candidate).inserted {
+                normalized.append(candidate)
+            }
+        }
+        return normalized
+    }
+
+    private static func isValidKey(_ key: String) -> Bool {
+        guard key.isEmpty == false else { return false }
+        return key.allSatisfy { character in
+            character.isLetter || character.isNumber || character == "_"
+        }
     }
 
     private static func sanitize(_ input: String) -> String {
@@ -119,8 +257,4 @@ struct TemplateEngine {
 
     private static let leftBraceToken = "\u{0001}"
     private static let rightBraceToken = "\u{0002}"
-
-    private static let placeholderRegex: NSRegularExpression? = {
-        try? NSRegularExpression(pattern: #"\{([A-Za-z0-9_]+)\}"#, options: [])
-    }()
 }

@@ -63,6 +63,48 @@ final class VersioningServiceTests: XCTestCase {
         XCTAssertEqual(callSignDiff?.change, .added)
     }
 
+    func testParameterDiffCapturesEnumerationChanges() {
+        let older = VersioningService.PromptSnapshot(
+            title: "Enum Demo",
+            body: "Favorite {fruit}",
+            tags: [],
+            params: [
+                RevisionParamSnapshot(
+                    key: "fruit",
+                    value: "apple",
+                    defaultValue: "apple",
+                    type: .enumeration,
+                    options: ["apple", "banana"]
+                )
+            ]
+        )
+
+        let newer = VersioningService.PromptSnapshot(
+            title: "Enum Demo",
+            body: "Favorite {fruit}",
+            tags: [],
+            params: [
+                RevisionParamSnapshot(
+                    key: "fruit",
+                    value: "banana",
+                    defaultValue: "banana",
+                    type: .enumeration,
+                    options: ["apple", "banana", "orange"]
+                )
+            ]
+        )
+
+        let diff = VersioningService.diff(from: older, to: newer)
+        guard let fruitDiff = diff.parameterDiffs.first else {
+            return XCTFail("Expected fruit parameter diff")
+        }
+        XCTAssertEqual(fruitDiff.change, .modified)
+        XCTAssertEqual(fruitDiff.previousType, .enumeration)
+        XCTAssertEqual(fruitDiff.currentType, .enumeration)
+        XCTAssertEqual(fruitDiff.optionsAdded, ["orange"])
+        XCTAssertTrue(fruitDiff.optionsRemoved.isEmpty)
+    }
+
     // MARK: - Helpers
 
     private func makeInMemoryContainer() throws -> ModelContainer {

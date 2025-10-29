@@ -667,6 +667,21 @@ private struct ParameterDiffRow: View {
                     .foregroundStyle(.secondary)
                 DiffTextView(segments: diff.defaultValueSegments)
             }
+            if let typeSummary = typeChangeSummary {
+                Text(typeSummary)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+            if diff.optionsAdded.isNotEmpty {
+                Text(String(format: String(localized: "enum_options_added", defaultValue: "新增枚举项：%@"), diff.optionsAdded.joined(separator: "、")))
+                    .font(.caption2)
+                    .foregroundStyle(.green)
+            }
+            if diff.optionsRemoved.isNotEmpty {
+                Text(String(format: String(localized: "enum_options_removed", defaultValue: "移除枚举项：%@"), diff.optionsRemoved.joined(separator: "、")))
+                    .font(.caption2)
+                    .foregroundStyle(.red)
+            }
         }
     }
 
@@ -695,8 +710,42 @@ private struct ParameterDiffRow: View {
             return .secondary
         }
     }
+
+    private var typeChangeSummary: String? {
+        switch (diff.previousType, diff.currentType) {
+        case (.some(let oldType), .some(let newType)) where oldType != newType:
+            return String(
+                format: String(localized: "enum_type_changed", defaultValue: "类型：%@ → %@"),
+                oldType.displayName,
+                newType.displayName
+            )
+        case (.none, .some(let newType)):
+            return String(
+                format: String(localized: "enum_type_added", defaultValue: "类型：%@"),
+                newType.displayName
+            )
+        case (.some(let oldType), .none):
+            return String(
+                format: String(localized: "enum_type_removed", defaultValue: "类型：%@"),
+                oldType.displayName
+            )
+        default:
+            return nil
+        }
+    }
 }
 
 private extension Array {
     var isNotEmpty: Bool { isEmpty == false }
+}
+
+private extension PromptParamType {
+    var displayName: String {
+        switch self {
+        case .text:
+            return String(localized: "param_type_text", defaultValue: "文本")
+        case .enumeration:
+            return String(localized: "param_type_enum", defaultValue: "枚举")
+        }
+    }
 }

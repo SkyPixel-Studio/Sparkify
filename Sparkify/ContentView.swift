@@ -553,19 +553,55 @@ struct ContentView: View {
     }
 
     private func synchronizeParams(for prompt: PromptItem) {
-        let keys = TemplateEngine.placeholders(in: prompt.body)
+        let descriptors = TemplateEngine.placeholderDescriptors(in: prompt.body)
         var existing = Dictionary(uniqueKeysWithValues: prompt.params.map { ($0.key, $0) })
         var ordered: [ParamKV] = []
-        for key in keys {
-            if let current = existing.removeValue(forKey: key) {
+
+        for descriptor in descriptors {
+            if let current = existing.removeValue(forKey: descriptor.key) {
+                apply(descriptor: descriptor, to: current)
                 ordered.append(current)
-            } else {
-                let created = ParamKV(key: key, value: "")
-                created.owner = prompt
-                ordered.append(created)
+                continue
             }
+
+            let type: PromptParamType
+            switch descriptor.kind {
+            case .text:
+                type = .text
+            case .enumeration:
+                type = .enumeration
+            }
+
+            let created = ParamKV(
+                key: descriptor.key,
+                value: "",
+                defaultValue: nil,
+                type: type,
+                options: descriptor.options,
+                owner: prompt
+            )
+            ordered.append(created)
         }
         prompt.params = ordered
+    }
+
+    private func apply(descriptor: TemplateEngine.PlaceholderDescriptor, to param: ParamKV) {
+        switch descriptor.kind {
+        case .text:
+            param.type = .text
+            param.options = []
+        case .enumeration(let options):
+            param.type = .enumeration
+            param.options = options
+            if let defaultValue = param.defaultValue, options.contains(defaultValue) == false {
+                param.defaultValue = nil
+            }
+
+            let current = param.value.trimmingCharacters(in: .whitespacesAndNewlines)
+            if current.isEmpty == false, options.contains(current) == false {
+                param.value = ""
+            }
+        }
     }
 }
 

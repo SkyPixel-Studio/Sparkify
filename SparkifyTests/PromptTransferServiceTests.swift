@@ -55,6 +55,35 @@ final class PromptTransferServiceTests: XCTestCase {
         XCTAssertEqual(fetched?.kind, .agentContext)
     }
 
+    func testExportAndImportPreservesEnumerationMetadata() throws {
+        let container = try makeInMemoryContainer()
+        let context = container.mainContext
+
+        let prompt = PromptItem(
+            uuid: "enum-1",
+            title: "Enum Demo",
+            body: "Favorite {fruit:apple|banana}",
+            params: [
+                ParamKV(key: "fruit", value: "banana", defaultValue: "apple", type: .enumeration, options: ["apple", "banana"])
+            ]
+        )
+        context.insert(prompt)
+        try context.save()
+
+        let data = try PromptTransferService.exportData(from: [prompt])
+
+        let destination = try makeInMemoryContainer()
+        let summary = try PromptTransferService.importData(data, into: destination.mainContext)
+        XCTAssertEqual(summary.inserted, 1)
+
+        let fetched = try destination.mainContext.fetch(FetchDescriptor<PromptItem>()).first
+        let param = try XCTUnwrap(fetched?.params.first)
+        XCTAssertEqual(param.type, .enumeration)
+        XCTAssertEqual(param.options, ["apple", "banana"])
+        XCTAssertEqual(param.value, "banana")
+        XCTAssertEqual(param.defaultValue, "apple")
+    }
+
     func testImportMergesByUUID() throws {
         let container = try makeInMemoryContainer()
         let context = container.mainContext
