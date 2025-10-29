@@ -219,6 +219,7 @@ struct PromptDetailView: View {
                 }
             }
             .pickerStyle(.segmented)
+            .tint(Color.neonYellow)
             .labelsHidden()
             Spacer()
         }
@@ -496,6 +497,7 @@ struct PromptDetailView: View {
                     }
                 }
                 .pickerStyle(.segmented)
+                .tint(Color.neonYellow)
                 .frame(width: 220)
             }
 
@@ -671,6 +673,7 @@ struct PromptDetailView: View {
                                     }
                                 }
                                 .pickerStyle(.segmented)
+                                .tint(Color.neonYellow)
                                 .frame(width: 220)
                             }
 

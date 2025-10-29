@@ -52,6 +52,7 @@ struct SettingsView: View {
                         }
                     }
                     .pickerStyle(.segmented)
+                    .tint(Color.neonYellow)
 
                     // Language Picker
                     VStack(alignment: .leading, spacing: 4) {
@@ -226,6 +227,7 @@ struct SettingsView: View {
                     Button(String(localized: "done", defaultValue: "完成")) {
                         dismiss()
                     }
+                    .tint(Color.neonYellow)
                     .keyboardShortcut(.defaultAction)
                 }
             }
@@ -382,7 +384,7 @@ private struct ToolboxSettingsRow: View {
 
             Toggle(isOn: $isEnabled) {
                 EmptyView()
-            }
+            }.tint(Color.neonYellow)
             .toggleStyle(.switch)
             .labelsHidden()
         }
@@ -445,7 +447,7 @@ private struct ToolboxSettingsRow: View {
         } label: {
             Image(systemName: "arrow.up.forward.square")
                 .font(.system(size: 11, weight: .medium))
-                .foregroundStyle(Color.accentColor.opacity(0.8))
+                .foregroundStyle(Color.neonYellow.opacity(0.8))
         }
         .buttonStyle(.plain)
         .help(String(localized: "open_in_browser", defaultValue: "在浏览器中打开"))

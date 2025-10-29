@@ -165,7 +165,7 @@ struct ContentView: View {
         .alert(String(localized: "export_hint", defaultValue: "导出提示"), isPresented: $showAgentContextExportWarning) {
             Button(String(localized: "continue_export", defaultValue: "继续导出")) {
                 performExport()
-            }
+            }.tint(Color.neonYellow)
             Button(String(localized: "cancel", defaultValue: "取消"), role: .cancel) { }
         } message: {
             Text(String(localized: "agent_context_export_warning", defaultValue: "检测到代理上下文模板。这类模板的文件关联信息不会被导出，重新导入后需要重新关联本地文件。"))
@@ -174,7 +174,7 @@ struct ContentView: View {
             Button(String(localized: "continue_dont_remind", defaultValue: "继续，下次不再提醒")) {
                 PreferencesService.shared.showAgentContextInfoAlert = false
                 proceedWithAgentContextSelection()
-            }
+            }.tint(Color.neonYellow)
             Button(String(localized: "cancel", defaultValue: "取消"), role: .cancel) { }
         } message: {
             Text(String(localized: "agent_context_info_alert_message", defaultValue: "代理上下文模板是适用于 Codex、Claude Code 等命令行代理的系统指令文档，储存于文件中。\n\n选取对应文件后，您可以在 Sparkify 内统一管理这些模板。"))

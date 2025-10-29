@@ -1049,6 +1049,7 @@ struct TemplateCardView: View {
                     }
                 }
                 .pickerStyle(.segmented)
+                .tint(Color.neonYellow)
                 .labelsHidden()
 
                 if contentMode == .preview {

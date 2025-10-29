@@ -39,7 +39,7 @@ struct ToolboxButtonView: View {
             } label: {
                 Image(systemName: isExpanded ? "xmark.circle.fill" : "square.grid.3x3.fill")
                     .font(.system(size: 20, weight: .semibold))
-                    .foregroundStyle(isExpanded ? Color.accentForeground : Color.neutralHigh)
+                    .foregroundStyle(isExpanded ? Color.accentForeground : collapsedForeground)
                     .frame(width: 48, height: 48)
                     .background(
                         Circle()
@@ -63,7 +63,11 @@ struct ToolboxButtonView: View {
         if colorScheme == .dark {
             return Color.cardSurface.opacity(0.9)
         }
-        return Color.neutralHigh.opacity(0.85)
+        return Color.neutralLow.opacity(0.95)
+    }
+
+    private var collapsedForeground: Color {
+        return Color.neutralHigh
     }
 
     @Environment(\.colorScheme) private var colorScheme
