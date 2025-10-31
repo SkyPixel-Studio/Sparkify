@@ -145,17 +145,73 @@ struct PromptTransferService {
     }
 
     private static func sanitizedValue(_ raw: String, for type: PromptParamType, options: [String]) -> String {
-        guard type == .enumeration else { return raw }
         let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard trimmed.isEmpty == false, options.contains(trimmed) else { return "" }
-        return trimmed
+        switch type {
+        case .text:
+            return raw
+        case .enumeration:
+            let normalized = normalizeOptions(options, for: .enumeration)
+            guard trimmed.isEmpty == false, normalized.contains(trimmed) else { return "" }
+            return trimmed
+        case .toggle:
+            let normalized = normalizeOptions(options, for: .toggle)
+            let onValue = normalized.first ?? ""
+            let offValue = normalized.count > 1 ? normalized[1] : ""
+            if trimmed == onValue || trimmed == offValue {
+                return trimmed
+            }
+            return offValue
+        }
     }
 
     private static func sanitizedDefault(_ raw: String?, for type: PromptParamType, options: [String]) -> String? {
-        guard let raw, raw.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false else { return nil }
+        let normalized = normalizeOptions(options, for: type)
+        let onValue = normalized.first ?? ""
+        let offValue = normalized.count > 1 ? normalized[1] : ""
+
+        guard let raw, raw.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false else {
+            switch type {
+            case .toggle:
+                return offValue
+            default:
+                return nil
+            }
+        }
         let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard type == .enumeration else { return trimmed }
-        return options.contains(trimmed) ? trimmed : nil
+        switch type {
+        case .text:
+            return trimmed
+        case .enumeration:
+            return normalized.contains(trimmed) ? trimmed : nil
+        case .toggle:
+            if trimmed == onValue || trimmed == offValue {
+                return trimmed
+            }
+            return offValue
+        }
+    }
+
+    private static func normalizeOptions(_ options: [String], for type: PromptParamType) -> [String] {
+        switch type {
+        case .text:
+            return []
+        case .enumeration:
+            var seen = Set<String>()
+            var normalized: [String] = []
+            for option in options {
+                let trimmed = option.trimmingCharacters(in: .whitespacesAndNewlines)
+                guard trimmed.isEmpty == false else { continue }
+                if seen.insert(trimmed).inserted {
+                    normalized.append(trimmed)
+                }
+            }
+            return normalized
+        case .toggle:
+            let trimmed = options.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            let onValue = trimmed.first ?? ""
+            let offValue = trimmed.count > 1 ? trimmed[1] : ""
+            return [onValue, offValue]
+        }
     }
 
     private static let currentVersion = 2
@@ -255,17 +311,32 @@ private struct ParamPayload: Codable {
         self.key = key
         self.value = value
         self.type = type
-        self.options = ParamPayload.normalize(options)
+        self.options = ParamPayload.normalize(options, for: type)
         if let defaultValue,
            defaultValue.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false {
             let trimmed = defaultValue.trimmingCharacters(in: .whitespacesAndNewlines)
-            if type == .enumeration, self.options.contains(trimmed) == false {
-                self.defaultValue = nil
-            } else {
+            switch type {
+            case .text:
                 self.defaultValue = trimmed
+            case .enumeration:
+                self.defaultValue = self.options.contains(trimmed) ? trimmed : nil
+            case .toggle:
+                let onValue = self.options.first ?? ""
+                let offValue = self.options.count > 1 ? self.options[1] : ""
+                if trimmed == onValue || trimmed == offValue {
+                    self.defaultValue = trimmed
+                } else {
+                    self.defaultValue = offValue
+                }
             }
         } else {
-            self.defaultValue = nil
+            switch type {
+            case .toggle:
+                let offValue = self.options.count > 1 ? self.options[1] : self.options.first ?? ""
+                self.defaultValue = offValue
+            default:
+                self.defaultValue = nil
+            }
         }
     }
 
@@ -289,7 +360,7 @@ private struct ParamPayload: Codable {
             type = .text
         }
         let decodedOptions = try container.decodeIfPresent([String].self, forKey: .options) ?? []
-        options = ParamPayload.normalize(decodedOptions)
+        options = ParamPayload.normalize(decodedOptions, for: type)
     }
 
     func encode(to encoder: Encoder) throws {
@@ -303,17 +374,27 @@ private struct ParamPayload: Codable {
         }
     }
 
-    private static func normalize(_ options: [String]) -> [String] {
-        var seen = Set<String>()
-        var normalized: [String] = []
-        for option in options {
-            let trimmed = option.trimmingCharacters(in: .whitespacesAndNewlines)
-            guard trimmed.isEmpty == false else { continue }
-            if seen.insert(trimmed).inserted {
-                normalized.append(trimmed)
+    private static func normalize(_ options: [String], for type: PromptParamType) -> [String] {
+        switch type {
+        case .text:
+            return []
+        case .enumeration:
+            var seen = Set<String>()
+            var normalized: [String] = []
+            for option in options {
+                let trimmed = option.trimmingCharacters(in: .whitespacesAndNewlines)
+                guard trimmed.isEmpty == false else { continue }
+                if seen.insert(trimmed).inserted {
+                    normalized.append(trimmed)
+                }
             }
+            return normalized
+        case .toggle:
+            let trimmed = options.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            let onValue = trimmed.first ?? ""
+            let offValue = trimmed.count > 1 ? trimmed[1] : ""
+            return [onValue, offValue]
         }
-        return normalized
     }
 }
 

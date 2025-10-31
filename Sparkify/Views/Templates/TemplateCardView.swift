@@ -84,6 +84,28 @@ struct TemplateCardView: View {
         return TemplateEngine.render(template: prompt.body, values: values)
     }
 
+    /// Matches param display order with placeholder sequence inside the template body.
+    private var orderedParams: [ParamKV] {
+        let descriptors = TemplateEngine.placeholderDescriptors(in: prompt.body)
+        var remaining = prompt.params
+        var ordered: [ParamKV] = []
+
+        for descriptor in descriptors {
+            if let index = remaining.firstIndex(where: { $0.key == descriptor.key }) {
+                ordered.append(remaining.remove(at: index))
+            }
+        }
+
+        if remaining.isEmpty == false {
+            let extras = remaining.sorted {
+                $0.key.localizedCompare($1.key) == .orderedAscending
+            }
+            ordered.append(contentsOf: extras)
+        }
+
+        return ordered
+    }
+
     private var isAgentContext: Bool {
         prompt.kind == .agentContext
     }
@@ -111,7 +133,7 @@ struct TemplateCardView: View {
     
     /// 判断参数值是否应该使用多行输入框
     private func shouldUseMultilineInput(_ param: ParamKV) -> Bool {
-        if param.type == .enumeration {
+        if param.type == .enumeration || param.type == .toggle {
             return false
         }
         let content = layoutCandidateContent(for: param)
@@ -562,7 +584,7 @@ struct TemplateCardView: View {
                 showResetAllConfirmation = false
             }
         } message: {
-            Text(String(format: String(localized: "reset_all_params_confirm", defaultValue: "确定要将所有 %lld 个参数重置为默认值吗？此操作将覆盖所有当前值。"), prompt.params.count))
+            Text(String(format: String(localized: "reset_all_params_confirm", defaultValue: "确定要将所有 %lld 个参数重置为默认值吗？此操作将覆盖所有当前值。"), orderedParams.count))
         }
         .confirmationDialog(
             String(localized: "delete_prompt", defaultValue: "删除模板"),
@@ -710,7 +732,7 @@ struct TemplateCardView: View {
 
     private var parameterFields: some View {
         VStack(alignment: .leading, spacing: 12) {
-            if prompt.params.isEmpty {
+            if orderedParams.isEmpty {
                 Text(String(localized: "no_params_copy_directly", defaultValue: "此模板暂无参数，直接复制即可"))
                     .font(.callout)
                     .foregroundStyle(.secondary)
@@ -754,14 +776,24 @@ struct TemplateCardView: View {
                 }
                 .padding(.bottom, 4)
 
-                ForEach(prompt.params, id: \.persistentModelID) { paramModel in
+                ForEach(orderedParams, id: \.persistentModelID) { paramModel in
                     let isMissing = isParamMissing(paramModel)
                     let focusTarget = ParamFocusTarget(id: paramModel.persistentModelID)
                     let useMultiline = resolvedShouldUseMultiline(for: paramModel)
                     let isFocused = focusedParam == focusTarget
 
                     Group {
-                        if paramModel.type == .enumeration {
+                        if paramModel.type == .toggle {
+                            toggleRow(for: paramModel, isMissing: isMissing)
+                                .transition(.opacity)
+                                .onAppear {
+                                    primeDraft(for: paramModel)
+                                    restoreFocusIfNeeded(for: paramModel)
+                                }
+                                .onChange(of: paramModel.value) { newValue in
+                                    syncDraftWithModelValue(newValue, for: paramModel)
+                                }
+                        } else if paramModel.type == .enumeration {
                             HStack(spacing: 10) {
                                 Text("\(paramModel.key)=")
                                     .font(.caption.weight(.semibold))
@@ -1253,6 +1285,24 @@ struct TemplateCardView: View {
         )
     }
 
+    private func toggleBinding(for param: ParamKV) -> Binding<Bool> {
+        let stringBinding = binding(for: param)
+        return Binding(
+            get: {
+                if let state = param.toggleState(for: stringBinding.wrappedValue) {
+                    return state
+                }
+                if let defaultState = param.toggleDefaultState {
+                    return defaultState
+                }
+                return false
+            },
+            set: { newValue in
+                stringBinding.wrappedValue = param.toggleValue(for: newValue)
+            }
+        )
+    }
+
     private func resolvedShouldUseMultiline(for param: ParamKV) -> Bool {
         guard let override = paramLayoutOverrides[param.persistentModelID] else {
             return shouldUseMultilineInput(param)
@@ -1344,6 +1394,71 @@ struct TemplateCardView: View {
         .scaleEffect(isHovered ? 1.08 : 1.0)
         .animation(interactionAnimation, value: isHovered)
         .help(isMultiline ? String(localized: "switch_to_single_line", defaultValue: "切换到单行模式") : String(localized: "switch_to_multiline", defaultValue: "切换到多行模式"))
+    }
+
+    @ViewBuilder
+    private func toggleRow(for param: ParamKV, isMissing: Bool) -> some View {
+        let controlBinding = toggleBinding(for: param)
+        let contents = param.toggleContents
+        let onText = contents.on
+        let offText = contents.off
+
+        HStack(spacing: 10) {
+            Text("\(param.key)=")
+                .font(.caption.weight(.semibold))
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(RoundedRectangle(cornerRadius: 8).fill(Color.neonYellow.opacity(0.4)))
+                .foregroundStyle(Color.accentForeground)
+
+            VStack(alignment: .leading, spacing: 4) {
+                let displayed = controlBinding.wrappedValue ? onText : offText
+                HStack(alignment: .center, spacing: 12) {
+                    Text(displayed.isEmpty ? String(localized: "toggle_empty_preview", defaultValue: "（无输出）") : displayed)
+                        .font(.system(size: 13, weight: .regular, design: .monospaced))
+                        .foregroundStyle(displayed.isEmpty ? Color.secondary : Color.appForeground)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+
+                    Spacer(minLength: 12)
+
+                    Text(controlBinding.wrappedValue ? String(localized: "toggle_state_on", defaultValue: "当前：开启") : String(localized: "toggle_state_off", defaultValue: "当前：关闭"))
+                        .font(.caption)
+                        .foregroundStyle(Color.secondary)
+
+                    Toggle("", isOn: controlBinding)
+                        .labelsHidden()
+                        .toggleStyle(SwitchToggleStyle(tint: Color.neonYellow))
+                }
+                .padding(.vertical, 4)
+                .padding(.horizontal, 6)
+                .background(isMissing ? Color.neonYellow.opacity(0.18) : Color.clear)
+                .clipShape(RoundedRectangle(cornerRadius: 6))
+            }
+
+            Spacer()
+
+            Button {
+                paramToReset = param
+            } label: {
+                let isHovered = hoveredResetParamID == param.persistentModelID
+                Image(systemName: "arrow.counterclockwise")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(Color.appForeground.opacity(isHovered ? 0.8 : 0.6))
+                    .frame(width: 24, height: 24)
+                    .background(Circle().fill(Color.cardSurface.opacity(isHovered ? 1.0 : 0.8)))
+                    .overlay(Circle().stroke(Color.cardOutline.opacity(isHovered ? 1.0 : 0.8), lineWidth: 1))
+            }
+            .buttonStyle(.plain)
+            .onHover { hovering in
+                withAnimation(interactionAnimation) {
+                    hoveredResetParamID = hovering ? param.persistentModelID : nil
+                }
+            }
+            .scaleEffect(hoveredResetParamID == param.persistentModelID ? 1.08 : 1.0)
+            .animation(interactionAnimation, value: hoveredResetParamID == param.persistentModelID)
+            .help(String(localized: "reset_to_default", defaultValue: "重置为默认值"))
+        }
     }
 
     private func draftValue(for param: ParamKV) -> String {
@@ -1584,12 +1699,22 @@ struct TemplateCardView: View {
                 type = .text
             case .enumeration:
                 type = .enumeration
+            case .toggle:
+                type = .toggle
+            }
+
+            let defaultValue: String?
+            switch descriptor.kind {
+            case .toggle(_, let offText):
+                defaultValue = offText
+            default:
+                defaultValue = nil
             }
 
             let created = ParamKV(
                 key: descriptor.key,
                 value: "",
-                defaultValue: nil,
+                defaultValue: defaultValue,
                 type: type,
                 options: descriptor.options,
                 owner: prompt
@@ -1622,6 +1747,21 @@ struct TemplateCardView: View {
             if current.isEmpty == false, options.contains(current) == false {
                 param.value = ""
             }
+        case .toggle(let on, let off):
+            param.type = .toggle
+            param.options = [on, off]
+            if let defaultValue = param.defaultValue,
+               defaultValue != on,
+               defaultValue != off {
+                param.defaultValue = off
+            }
+            if param.defaultValue == nil {
+                param.defaultValue = off
+            }
+            let current = param.value.trimmingCharacters(in: .whitespacesAndNewlines)
+            if current != on && current != off {
+                param.value = off
+            }
         }
     }
 
@@ -1650,13 +1790,21 @@ struct TemplateCardView: View {
             cancelPendingSave(for: param.persistentModelID)
             let candidate = param.defaultValue ?? ""
             let newValue: String
-            if param.type == .enumeration {
+            switch param.type {
+            case .enumeration:
                 if candidate.isEmpty == false, param.options.contains(candidate) {
                     newValue = candidate
                 } else {
                     newValue = ""
                 }
-            } else {
+            case .toggle:
+                let contents = param.toggleContents
+                if candidate == contents.on || candidate == contents.off {
+                    newValue = candidate
+                } else {
+                    newValue = contents.off
+                }
+            case .text:
                 newValue = candidate
             }
             param.value = newValue
@@ -1672,13 +1820,21 @@ struct TemplateCardView: View {
                 cancelPendingSave(for: param.persistentModelID)
                 let candidate = param.defaultValue ?? ""
                 let newValue: String
-                if param.type == .enumeration {
+                switch param.type {
+                case .enumeration:
                     if candidate.isEmpty == false, param.options.contains(candidate) {
                         newValue = candidate
                     } else {
                         newValue = ""
                     }
-                } else {
+                case .toggle:
+                    let contents = param.toggleContents
+                    if candidate == contents.on || candidate == contents.off {
+                        newValue = candidate
+                    } else {
+                        newValue = contents.off
+                    }
+                case .text:
                     newValue = candidate
                 }
                 param.value = newValue

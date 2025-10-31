@@ -16,6 +16,8 @@ private extension TemplateEngine.PlaceholderDescriptor.Kind {
             return .text
         case .enumeration:
             return .enumeration
+        case .toggle:
+            return .toggle
         }
     }
 }
@@ -27,6 +29,8 @@ private extension PromptParamType {
             return String(localized: "param_type_text", defaultValue: "文本")
         case .enumeration:
             return String(localized: "param_type_enum", defaultValue: "枚举")
+        case .toggle:
+            return String(localized: "param_type_toggle", defaultValue: "开关")
         }
     }
 }
@@ -664,6 +668,25 @@ struct PromptDetailView: View {
                                                     draft.params[index].defaultValue = nil
                                                 }
                                                 rewritePlaceholder(for: index)
+                                            case .toggle:
+                                                var currentOptions = draft.params[index].options
+                                                if currentOptions.count < 2 {
+                                                    let defaultOn = String(localized: "toggle_default_on_text", defaultValue: "开启时输出")
+                                                    let defaultOff = String(localized: "toggle_default_off_text", defaultValue: "关闭时输出")
+                                                    let inferredOn = (draft.params[index].defaultValue?.trimmingCharacters(in: .whitespacesAndNewlines)).flatMap { $0.isEmpty ? nil : $0 }
+                                                    currentOptions = [inferredOn ?? defaultOn, defaultOff]
+                                                } else {
+                                                    currentOptions = currentOptions.prefix(2).map { String($0) }
+                                                }
+                                                draft.params[index].options = Array(currentOptions)
+                                                if let defaultValue = draft.params[index].defaultValue,
+                                                   currentOptions.contains(defaultValue) == false {
+                                                    draft.params[index].defaultValue = currentOptions.last
+                                                }
+                                                if draft.params[index].defaultValue == nil {
+                                                    draft.params[index].defaultValue = currentOptions.last
+                                                }
+                                                rewritePlaceholder(for: index)
                                             }
                                         }
                                     )
@@ -674,7 +697,7 @@ struct PromptDetailView: View {
                                 }
                                 .pickerStyle(.segmented)
                                 .tint(Color.neonYellow)
-                                .frame(width: 220)
+                                .frame(width: 250)
                             }
 
                             switch draft.params[index].type {
@@ -730,12 +753,85 @@ struct PromptDetailView: View {
                                     }
                                     .pickerStyle(.menu)
                                 }
+                            case .toggle:
+                                let onValue = toggleOptionValue(for: index, optionIndex: 0)
+                                let offValue = toggleOptionValue(for: index, optionIndex: 1)
+
+                                VStack(alignment: .leading, spacing: 12) {
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text(String(localized: "toggle_on_label", defaultValue: "开启状态文本"))
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                        TextField(
+                                            String(localized: "toggle_on_placeholder", defaultValue: "开启时输出"),
+                                            text: Binding(
+                                                get: { toggleOptionValue(for: index, optionIndex: 0) },
+                                                set: { newValue in
+                                                    setToggleOptionValue(newValue, optionIndex: 0, for: index)
+                                                }
+                                            )
+                                        )
+                                        .textFieldStyle(.roundedBorder)
+                                        .font(.system(size: 14, weight: .regular, design: .monospaced))
+                                        .autocorrectionDisabled()
+                                    }
+
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text(String(localized: "toggle_off_label", defaultValue: "关闭状态文本"))
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                        TextField(
+                                            String(localized: "toggle_off_placeholder", defaultValue: "关闭时输出"),
+                                            text: Binding(
+                                                get: { toggleOptionValue(for: index, optionIndex: 1) },
+                                                set: { newValue in
+                                                    setToggleOptionValue(newValue, optionIndex: 1, for: index)
+                                                }
+                                            )
+                                        )
+                                        .textFieldStyle(.roundedBorder)
+                                        .font(.system(size: 14, weight: .regular, design: .monospaced))
+                                        .autocorrectionDisabled()
+                                    }
+
+                                    HStack(alignment: .firstTextBaseline, spacing: 12) {
+                                        Text(String(localized: "toggle_default_state", defaultValue: "默认状态"))
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                        Picker(
+                                            "",
+                                            selection: Binding<String>(
+                                                get: {
+                                                    let current = draft.params[index].defaultValue ?? offValue
+                                                    let options = draft.params[index].options
+                                                    if options.contains(current) {
+                                                        return current
+                                                    }
+                                                    return offValue
+                                                },
+                                                set: { newValue in
+                                                    draft.params[index].defaultValue = newValue
+                                                }
+                                            )
+                                        ) {
+                                            Text(String(localized: "toggle_default_radio_on", defaultValue: "开启"))
+                                                .tag(onValue)
+                                            Text(String(localized: "toggle_default_radio_off", defaultValue: "关闭"))
+                                                .tag(offValue)
+                                        }
+                                        .pickerStyle(.radioGroup)
+                                        .horizontalRadioGroupLayout()
+                                        .labelsHidden()
+                                    }
+                                }
                             }
 
-                            Text(parameterStatusText(for: draft.params[index]))
-                                .font(.caption2)
-                                .foregroundStyle(.secondary)
-                                .fixedSize(horizontal: false, vertical: true)
+                            if draft.params[index].type != .toggle {
+                                Text(parameterStatusText(for: draft.params[index]))
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
                         }
                         .padding(.vertical, 10)
                         .padding(.horizontal, 12)
@@ -829,6 +925,19 @@ struct PromptDetailView: View {
             } else {
                 return "\(optionsSummary)\n" + String(format: String(localized: "param_default_value", defaultValue: "默认值：%@"), defaultValue)
             }
+        case .toggle:
+            let onValue = param.options.first ?? ""
+            let offValue = param.options.count > 1 ? param.options[1] : ""
+            let summary = String(
+                format: String(localized: "toggle_status_summary", defaultValue: "开启输出：%@ · 关闭输出：%@"),
+                onValue.isEmpty ? String(localized: "toggle_preview_empty", defaultValue: "空") : onValue,
+                offValue.isEmpty ? String(localized: "toggle_preview_empty", defaultValue: "空") : offValue
+            )
+            let effectiveDefault = defaultValue.isEmpty ? offValue : defaultValue
+            let defaultDescription = effectiveDefault == onValue
+                ? String(localized: "toggle_default_on", defaultValue: "默认：开启")
+                : String(localized: "toggle_default_off", defaultValue: "默认：关闭")
+            return "\(summary)\n\(defaultDescription)"
         }
     }
 
@@ -846,14 +955,31 @@ struct PromptDetailView: View {
                    descriptor.options.contains(defaultValue) == false {
                     current.defaultValue = nil
                 }
+                if current.type == .toggle {
+                    let offValue = descriptor.options.count > 1 ? descriptor.options[1] : descriptor.options.first ?? ""
+                    if let defaultValue = current.defaultValue,
+                       descriptor.options.contains(defaultValue) == false {
+                        current.defaultValue = offValue
+                    }
+                    if current.defaultValue == nil {
+                        current.defaultValue = offValue
+                    }
+                }
                 ordered.append(current)
                 continue
+            }
+
+            let defaultValue: String?
+            if descriptor.kind.paramType == .toggle {
+                defaultValue = descriptor.options.count > 1 ? descriptor.options[1] : descriptor.options.first
+            } else {
+                defaultValue = nil
             }
 
             ordered.append(
                 ParamDraft(
                     key: descriptor.key,
-                    defaultValue: nil,
+                    defaultValue: defaultValue,
                     type: descriptor.kind.paramType,
                     options: descriptor.options
                 )
@@ -878,6 +1004,41 @@ struct PromptDetailView: View {
         return normalized
     }
 
+    private func toggleOptionValue(for paramIndex: Int, optionIndex: Int) -> String {
+        guard draft.params.indices.contains(paramIndex) else { return "" }
+        var options = draft.params[paramIndex].options
+        while options.count <= optionIndex {
+            options.append("")
+        }
+        if options != draft.params[paramIndex].options {
+            draft.params[paramIndex].options = options
+        }
+        return options[optionIndex]
+    }
+
+    private func setToggleOptionValue(_ value: String, optionIndex: Int, for paramIndex: Int) {
+        guard draft.params.indices.contains(paramIndex) else { return }
+        var options = draft.params[paramIndex].options
+        while options.count <= optionIndex {
+            options.append("")
+        }
+        options[optionIndex] = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        if options.count > 2 {
+            options = Array(options.prefix(2))
+        }
+        draft.params[paramIndex].options = options
+
+        if let currentDefault = draft.params[paramIndex].defaultValue,
+           options.contains(currentDefault) == false {
+            draft.params[paramIndex].defaultValue = options.last
+        }
+        if draft.params[paramIndex].defaultValue == nil {
+            draft.params[paramIndex].defaultValue = options.last
+        }
+
+        rewritePlaceholder(for: paramIndex)
+    }
+
     private func rewritePlaceholder(for index: Int) {
         guard draft.params.indices.contains(index) else { return }
         let param = draft.params[index]
@@ -893,6 +1054,14 @@ struct PromptDetailView: View {
             descriptor = TemplateEngine.PlaceholderDescriptor(
                 key: param.key,
                 kind: .enumeration(options: param.options),
+                literalContent: param.key
+            )
+        case .toggle:
+            let onValue = toggleOptionValue(for: index, optionIndex: 0)
+            let offValue = toggleOptionValue(for: index, optionIndex: 1)
+            descriptor = TemplateEngine.PlaceholderDescriptor(
+                key: param.key,
+                kind: .toggle(on: onValue, off: offValue),
                 literalContent: param.key
             )
         }
@@ -936,13 +1105,23 @@ struct PromptDetailView: View {
         var ordered: [ParamKV] = []
 
         for param in draft.params {
-            let normalizedDefault = param.defaultValue
+            let normalizedDefault: String?
+            switch param.type {
+            case .toggle:
+                let offValue = param.options.count > 1 ? param.options[1] : (param.options.first ?? "")
+                normalizedDefault = param.defaultValue ?? offValue
+            default:
+                normalizedDefault = param.defaultValue
+            }
             if let current = existing.removeValue(forKey: param.key) {
                 current.defaultValue = normalizedDefault
                 current.type = param.type
                 current.options = param.options
 
-                if param.type == .enumeration {
+                switch param.type {
+                case .text:
+                    break
+                case .enumeration:
                     if let defaultValue = current.defaultValue, param.options.contains(defaultValue) == false {
                         current.defaultValue = nil
                     }
@@ -950,6 +1129,22 @@ struct PromptDetailView: View {
                     let trimmedValue = current.value.trimmingCharacters(in: .whitespacesAndNewlines)
                     if trimmedValue.isEmpty == false, param.options.contains(trimmedValue) == false {
                         current.value = ""
+                    }
+                case .toggle:
+                    let onValue = param.options.first ?? ""
+                    let offValue = param.options.count > 1 ? param.options[1] : ""
+                    if let defaultValue = current.defaultValue,
+                       defaultValue != onValue,
+                       defaultValue != offValue {
+                        current.defaultValue = offValue
+                    }
+                    if current.defaultValue == nil {
+                        current.defaultValue = offValue
+                    }
+
+                    let trimmedValue = current.value.trimmingCharacters(in: .whitespacesAndNewlines)
+                    if trimmedValue != onValue && trimmedValue != offValue {
+                        current.value = offValue
                     }
                 }
 
@@ -1082,9 +1277,17 @@ struct PromptDetailView: View {
             self.pinned = prompt.pinned
             self.tags = PromptTagPolicy.normalize(prompt.tags, for: prompt.kind)
             self.params = prompt.params.map { param in
-                ParamDraft(
+                let defaultValue: String?
+                if param.type == .toggle {
+                    let options = param.options
+                    let offValue = options.count > 1 ? options[1] : (options.first ?? "")
+                    defaultValue = param.defaultValue ?? offValue
+                } else {
+                    defaultValue = param.defaultValue
+                }
+                return ParamDraft(
                     key: param.key,
-                    defaultValue: param.defaultValue,
+                    defaultValue: defaultValue,
                     type: param.type,
                     options: param.options
                 )

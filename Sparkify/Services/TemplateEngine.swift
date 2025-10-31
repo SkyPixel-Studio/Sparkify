@@ -10,6 +10,7 @@ struct TemplateEngine {
         enum Kind: Equatable {
             case text
             case enumeration(options: [String])
+            case toggle(on: String, off: String)
         }
 
         let key: String
@@ -20,6 +21,9 @@ struct TemplateEngine {
         var options: [String] {
             if case let .enumeration(options) = kind {
                 return options
+            }
+            if case let .toggle(on, off) = kind {
+                return [on, off]
             }
             return []
         }
@@ -32,6 +36,9 @@ struct TemplateEngine {
                 guard options.isEmpty == false else { return "{\(key)}" }
                 let joined = options.joined(separator: "|")
                 return "{\(key):\(joined)}"
+            case let .toggle(on, off):
+                let joined = [on, off].joined(separator: "|")
+                return "{\(key):switch:\(joined)}"
             }
         }
     }
@@ -218,6 +225,10 @@ struct TemplateEngine {
         }
 
         let optionsString = String(parts[1])
+        if let toggle = makeToggleDescriptor(forKey: rawKey, optionsString: optionsString, rawContent: rawContent) {
+            return toggle
+        }
+
         let parsedOptions = parseOptions(optionsString)
 
         if parsedOptions.isEmpty {
@@ -240,6 +251,23 @@ struct TemplateEngine {
             }
         }
         return normalized
+    }
+
+    private static func makeToggleDescriptor(forKey key: String, optionsString: String, rawContent: String) -> PlaceholderDescriptor? {
+        let lowercased = optionsString.lowercased()
+        guard lowercased.hasPrefix("switch:") else { return nil }
+
+        let startIndex = optionsString.index(optionsString.startIndex, offsetBy: "switch:".count)
+        let payload = optionsString[startIndex...]
+        let components = payload.split(separator: "|", maxSplits: 1, omittingEmptySubsequences: false)
+        let onText = components.first.map { String($0).trimmingCharacters(in: .whitespacesAndNewlines) } ?? ""
+        let offText = components.count > 1 ? String(components[1]).trimmingCharacters(in: .whitespacesAndNewlines) : ""
+
+        return PlaceholderDescriptor(
+            key: key,
+            kind: .toggle(on: onText, off: offText),
+            literalContent: rawContent
+        )
     }
 
     private static func isValidKey(_ key: String) -> Bool {

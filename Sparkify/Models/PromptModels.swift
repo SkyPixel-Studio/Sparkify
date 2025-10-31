@@ -4,6 +4,7 @@ import SwiftData
 enum PromptParamType: String, Codable, CaseIterable {
     case text
     case enumeration
+    case toggle
 }
 
 struct RevisionParamSnapshot: Codable, Equatable {
@@ -143,8 +144,9 @@ final class ParamKV {
         self.value = value
         self.defaultValue = defaultValue
         self.typeRawValue = type.rawValue
-        self.optionsStorage = ParamKV.normalizeOptions(options)
+        self.optionsStorage = ParamKV.normalizeOptions(options, for: type)
         self.owner = owner
+        sanitizeConfigurationForCurrentType()
     }
 
     var type: PromptParamType {
@@ -159,15 +161,16 @@ final class ParamKV {
         }
         set {
             typeRawValue = newValue.rawValue
-            if newValue != .enumeration {
-                optionsStorage = []
-            }
+            sanitizeConfigurationForCurrentType()
         }
     }
 
     var options: [String] {
-        get { optionsStorage }
-        set { optionsStorage = ParamKV.normalizeOptions(newValue) }
+        get { ParamKV.normalizeOptions(optionsStorage, for: type) }
+        set {
+            optionsStorage = ParamKV.normalizeOptions(newValue, for: type)
+            sanitizeConfigurationForCurrentType()
+        }
     }
 
     var resolvedValue: String {
@@ -199,6 +202,28 @@ final class ParamKV {
                 return ""
             }
             return fallback
+        case .toggle:
+            let normalized = ParamKV.normalizeOptions(optionsStorage, for: .toggle)
+            let onText = normalized.first ?? ""
+            let offText = normalized.count > 1 ? normalized[1] : ""
+            let trimmedDefault = defaultValue?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+
+            if trimmedValue == onText || trimmedValue == offText {
+                return trimmedValue
+            }
+
+            if trimmedValue.isEmpty {
+                if trimmedDefault == onText || trimmedDefault == offText {
+                    return trimmedDefault
+                }
+                return offText
+            }
+
+            if trimmedDefault == onText || trimmedDefault == offText {
+                return trimmedDefault
+            }
+
+            return offText
         }
     }
 
@@ -206,17 +231,111 @@ final class ParamKV {
         resolvedValue.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
-    private static func normalizeOptions(_ options: [String]) -> [String] {
-        var seen = Set<String>()
-        var normalized: [String] = []
-        for option in options {
-            let trimmed = option.trimmingCharacters(in: .whitespacesAndNewlines)
-            guard trimmed.isEmpty == false else { continue }
-            if seen.insert(trimmed).inserted {
-                normalized.append(trimmed)
+    private static func normalizeOptions(_ options: [String], for type: PromptParamType) -> [String] {
+        switch type {
+        case .text:
+            return []
+        case .enumeration:
+            var seen = Set<String>()
+            var normalized: [String] = []
+            for option in options {
+                let trimmed = option.trimmingCharacters(in: .whitespacesAndNewlines)
+                guard trimmed.isEmpty == false else { continue }
+                if seen.insert(trimmed).inserted {
+                    normalized.append(trimmed)
+                }
             }
+            return normalized
+        case .toggle:
+            return normalizeToggleOptions(options)
         }
-        return normalized
+    }
+
+    private static func normalizeToggleOptions(_ options: [String]) -> [String] {
+        let trimmed = options.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+        let onText = trimmed.first ?? ""
+        let offText = trimmed.count > 1 ? trimmed[1] : ""
+        return [onText, offText]
+    }
+
+    private func sanitizeConfigurationForCurrentType() {
+        optionsStorage = ParamKV.normalizeOptions(optionsStorage, for: type)
+        switch type {
+        case .text:
+            optionsStorage = []
+        case .enumeration:
+            sanitizeEnumerationValues()
+        case .toggle:
+            sanitizeToggleValues()
+        }
+    }
+
+    private func sanitizeEnumerationValues() {
+        let normalized = options
+        if let defaultValue,
+           normalized.contains(defaultValue) == false {
+            self.defaultValue = nil
+        }
+
+        let trimmedValue = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmedValue.isEmpty == false,
+           normalized.contains(trimmedValue) == false {
+            value = ""
+        }
+    }
+
+    private func sanitizeToggleValues() {
+        let normalized = ParamKV.normalizeOptions(optionsStorage, for: .toggle)
+        let onText = normalized.first ?? ""
+        let offText = normalized.count > 1 ? normalized[1] : ""
+
+        if let currentDefault = defaultValue,
+           currentDefault != onText,
+           currentDefault != offText {
+            defaultValue = offText
+        }
+
+        if defaultValue == nil {
+            defaultValue = offText
+        }
+
+        let trimmedValue = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmedValue != onText && trimmedValue != offText {
+            value = offText
+        }
+    }
+}
+
+extension ParamKV {
+    var toggleContents: (on: String, off: String) {
+        let normalized = ParamKV.normalizeOptions(optionsStorage, for: .toggle)
+        let onText = normalized.first ?? ""
+        let offText = normalized.count > 1 ? normalized[1] : ""
+        return (onText, offText)
+    }
+
+    func toggleValue(for state: Bool) -> String {
+        let contents = toggleContents
+        return state ? contents.on : contents.off
+    }
+
+    func toggleState(for value: String) -> Bool? {
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        let contents = toggleContents
+        if trimmed == contents.off {
+            return false
+        }
+        if trimmed == contents.on {
+            return true
+        }
+        return nil
+    }
+
+    var toggleDefaultState: Bool? {
+        if let defaultValue {
+            return toggleState(for: defaultValue)
+        }
+        return toggleState(for: toggleContents.off)
     }
 }
 

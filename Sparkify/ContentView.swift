@@ -55,6 +55,9 @@ struct ContentView: View {
         return tagSet.sorted { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending }
     }
 
+    /// Provide an intrinsic size large enough for the initial SwiftUI window.
+    private let minimumWindowSize = CGSize(width: 1280, height: 720)
+
     var body: some View {
         NavigationSplitView(columnVisibility: $columnVisibility) {
             SidebarListView(
@@ -187,6 +190,7 @@ struct ContentView: View {
                     .padding(.top, 20)
             }
         }
+        .frame(minWidth: minimumWindowSize.width, minHeight: minimumWindowSize.height)
     }
 
     private func addPrompt() {
@@ -572,12 +576,22 @@ struct ContentView: View {
                 type = .text
             case .enumeration:
                 type = .enumeration
+            case .toggle:
+                type = .toggle
+            }
+
+            let defaultValue: String?
+            switch descriptor.kind {
+            case .toggle(_, let offText):
+                defaultValue = offText
+            default:
+                defaultValue = nil
             }
 
             let created = ParamKV(
                 key: descriptor.key,
                 value: "",
-                defaultValue: nil,
+                defaultValue: defaultValue,
                 type: type,
                 options: descriptor.options,
                 owner: prompt
@@ -602,6 +616,23 @@ struct ContentView: View {
             let current = param.value.trimmingCharacters(in: .whitespacesAndNewlines)
             if current.isEmpty == false, options.contains(current) == false {
                 param.value = ""
+            }
+        case .toggle(let on, let off):
+            param.type = .toggle
+            param.options = [on, off]
+            if let defaultValue = param.defaultValue,
+               defaultValue != on,
+               defaultValue != off {
+                param.defaultValue = off
+            }
+
+            if param.defaultValue == nil {
+                param.defaultValue = off
+            }
+
+            let current = param.value.trimmingCharacters(in: .whitespacesAndNewlines)
+            if current != on && current != off {
+                param.value = off
             }
         }
     }

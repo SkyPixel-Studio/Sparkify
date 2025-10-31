@@ -746,6 +746,8 @@ private extension PromptParamType {
             return String(localized: "param_type_text", defaultValue: "文本")
         case .enumeration:
             return String(localized: "param_type_enum", defaultValue: "枚举")
+        case .toggle:
+            return String(localized: "param_type_toggle", defaultValue: "开关")
         }
     }
 }
