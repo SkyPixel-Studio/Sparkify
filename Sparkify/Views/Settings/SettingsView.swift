@@ -20,6 +20,8 @@ struct SettingsView: View {
     @State private var showResetSuccess = false
     @State private var iconRefreshID = UUID()
     @State private var showLanguageRestartAlert = false
+    @State private var isShowingLicenseSheet = false
+    @State private var licenseText: String = ""
     
     private var appVersion: String {
         Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
@@ -186,6 +188,22 @@ struct SettingsView: View {
                     .buttonStyle(.plain)
                 }
                 
+                Section(String(localized: "open_source_licenses", defaultValue: "开源许可")) {
+                    Button {
+                        presentLicenseViewer()
+                    } label: {
+                        HStack {
+                            Text(String(localized: "view_third_party_licenses", defaultValue: "查看第三方协议"))
+                                .foregroundStyle(.primary)
+                            Spacer()
+                            Image(systemName: "doc.text.magnifyingglass")
+                                .font(.system(size: 12))
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .buttonStyle(.plain)
+                }
+                
                 // MARK: - Developer Options (Debug Only)
                 if isDebugMode {
                     Section {
@@ -248,6 +266,9 @@ struct SettingsView: View {
                 Button(String(localized: "ok", defaultValue: "好")) { }
             } message: {
                 Text(String(localized: "language_requires_restart", defaultValue: "语言更改将在重启应用后生效。"))
+            }
+            .sheet(isPresented: $isShowingLicenseSheet) {
+                LicenseViewer(text: licenseText)
             }
         }
         .frame(minWidth: 500, minHeight: 400)
@@ -331,6 +352,21 @@ struct SettingsView: View {
         if let url = URL(string: urlString) {
             NSWorkspace.shared.open(url)
         }
+    }
+    
+    private func presentLicenseViewer() {
+        licenseText = loadLicenseText() ?? String(localized: "license_load_failed", defaultValue: "无法加载第三方协议。")
+        isShowingLicenseSheet = true
+    }
+    
+    private func loadLicenseText() -> String? {
+        guard let asset = NSDataAsset(name: "ThirdPartyLicenses") else {
+            return nil
+        }
+        if let string = String(data: asset.data, encoding: .utf8) {
+            return string
+        }
+        return String(decoding: asset.data, as: UTF8.self)
     }
 }
 
@@ -489,6 +525,38 @@ private struct ToolboxSettingsRow: View {
             return
         }
         NSWorkspace.shared.open(url)
+    }
+}
+
+private struct LicenseViewer: View {
+    let text: String
+    @Environment(\.dismiss) private var dismiss
+    
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack {
+                Text(String(localized: "third_party_licenses_title", defaultValue: "第三方协议"))
+                    .font(.system(size: 16, weight: .semibold))
+                Spacer()
+                Button(String(localized: "close", defaultValue: "关闭")) {
+                    dismiss()
+                }
+                .keyboardShortcut(.cancelAction)
+            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 12)
+            
+            Divider()
+            
+            ScrollView {
+                Text(text)
+                    .font(.system(size: 12, weight: .regular, design: .monospaced))
+                    .textSelection(.enabled)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(20)
+            }
+        }
+        .frame(minWidth: 520, minHeight: 420)
     }
 }
 

@@ -2166,6 +2166,23 @@
         }
       }
     },
+    "license_load_failed" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unable to load third-party licenses."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无法加载第三方协议。"
+          }
+        }
+      }
+    },
     "last_updated_relative" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -2709,6 +2726,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "在浏览器中打开"
+          }
+        }
+      }
+    },
+    "open_source_licenses" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open Source Licenses"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "开源许可"
           }
         }
       }
@@ -4398,6 +4432,23 @@
         }
       }
     },
+    "third_party_licenses_title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Third-Party Licenses"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "第三方协议"
+          }
+        }
+      }
+    },
     "time_ago" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -5448,6 +5499,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "查看更多设置"
+          }
+        }
+      }
+    },
+    "view_third_party_licenses" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "View Third-Party Licenses"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "查看第三方协议"
           }
         }
       }
